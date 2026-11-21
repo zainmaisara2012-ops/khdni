@@ -4,33 +4,36 @@
 <style>body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:14px;margin:10px 0}input,button{font:inherit;width:100%;border:0;border-radius:12px;padding:12px;margin:4px 0}
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}a{color:#ff7a00;font-weight:700}.m{color:#777}h3{margin:0 0 6px}</style></head><body>
-<div id="login"><h2>دخول السائق</h2><input id="p" type="tel" placeholder="رقم الموبايل"><input id="k" type="password" placeholder="الرمز السري"><button onclick="login()">دخول</button></div>
-<div id="app" style="display:none"><h2 id="hi"></h2><div id="list"></div><button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="wa('أنا السائق: '+me.name+' - '+me.phone)">تواصل مع الإدارة عبر واتساب</button>
-<button style="background:#333;color:#fff" onclick="localStorage.removeItem('drv');location.reload()">خروج</button></div>
+<div id="login" style="display:none"><h2>دخول السائق</h2><input id="p" type="tel" placeholder="رقم الموبايل"><input id="k" type="password" placeholder="الرمز السري"><button onclick="doLogin()">دخول</button></div>
+<div id="app" style="display:none"><h2 id="hi"></h2><div id="list"></div>
+<button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="wa()">تواصل مع الإدارة عبر واتساب</button>
+<button style="background:#333" onclick="auth.signOut().then(()=>location.reload())">خروج</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="config.js"></script>
 <script>
-let me=JSON.parse(localStorage.drv||'null');
-function wa(extra){if(ADMIN_WHATSAPP.includes('000000'))return alert('رقم الواتساب غير مضبوط');
-window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، بدي تواصل مع إدارة خدني'+(extra?'\n'+extra:'')),'_blank')}
-
-async function login(){const s=await db.collection('drivers').where('phone','==',p.value).where('pin','==',k.value).get();
- if(s.empty)return alert('بيانات غلط');const d=s.docs[0];me={id:d.id,...d.data()};localStorage.drv=JSON.stringify(me);start()}
-function start(){login_.style.display='none';app.style.display='block';hi.textContent='أهلاً '+me.name;
- db.collection('orders').where('status','in',['new','accepted','arrived']).onSnapshot(s=>{
-  list.innerHTML='';s.forEach(d=>{const o=d.data();if(o.status!='new'&&o.driverId!=me.id)return;
-   const e=document.createElement('div');e.className='c';
-   const nav=`https://www.google.com/maps/dir/?api=1&destination=${o.from.lat},${o.from.lng}`;
-   e.innerHTML=`<h3>${o.price.toLocaleString('ar')} ${PRICING.currency} · ${o.km} كم</h3><div>من: ${o.from.text}</div><div>إلى: ${o.to.text}</div>
-   <div class="m">${o.status=='new'?'':o.name+' '+o.phone}</div>`+
-   (o.status=='new'?`<button onclick="act('${d.id}','accepted')">قبول الطلب</button>`:
-    `<a href="${nav}" target="_blank">فتح موقع الزبون بالخريطة</a><a href="tel:${o.phone}" style="margin-inline-start:14px">اتصال</a>`+
-    (o.status=='accepted'?`<button onclick="act('${d.id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${d.id}','done')">إنهاء الرحلة</button>`));
-   list.appendChild(e)});if(!list.children.length)list.innerHTML='<p class="m">لا يوجد طلبات حالياً</p>'})}
+const $=i=>document.getElementById(i);let me=null,N={},M={};
+function wa(){window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، أنا السائق: '+me.name+' - '+me.phone),'_blank')}
+function doLogin(){auth.signInWithEmailAndPassword(mail($('p').value,'d'),$('k').value).catch(()=>alert('بيانات غلط'))}
+auth.onAuthStateChanged(async u=>{
+ if(u&&!/@driver\.khedni\.app$/.test(u.email)){await auth.signOut();return}
+ $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';if(!u)return;
+ const d=await db.collection('drivers').doc(u.uid).get();
+ if(!d.exists){await auth.signOut();alert('حساب السائق غير مفعّل');return}
+ me={id:u.uid,...d.data()};$('hi').textContent='أهلاً '+me.name;
+ db.collection('orders').where('status','==','new').onSnapshot(s=>{N={};s.forEach(x=>N[x.id]=x.data());draw()},e=>alert(e.message));
+ db.collection('orders').where('driverId','==',me.id).onSnapshot(s=>{M={};s.forEach(x=>{const o=x.data();if(['accepted','arrived'].includes(o.status))M[x.id]=o});draw()},e=>alert(e.message))});
+function draw(){const all={...N,...M},l=$('list');l.innerHTML='';
+ Object.keys(all).forEach(id=>{const o=all[id],e=document.createElement('div');e.className='c';
+  const nav=`https://www.google.com/maps/dir/?api=1&destination=${o.from.lat},${o.from.lng}`;
+  e.innerHTML=`<h3>${o.price.toLocaleString('ar')} ${PRICING.currency} · ${o.km} كم · ${o.pay=='wallet'?'مدفوع (محفظة)':'كاش'}</h3><div>من: ${esc(o.from.text)}</div><div>إلى: ${esc(o.to.text)}</div>`+
+  (o.status=='new'?`<button onclick="act('${id}','accepted')">قبول الطلب</button>`:
+   `<div class="m">${esc(o.name)} ${esc(o.phone)}</div><a href="${nav}" target="_blank">موقع الزبون بالخريطة</a> <a href="tel:${esc(o.phone)}" style="margin-inline-start:14px">اتصال</a>`+
+   (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
+  l.appendChild(e)});if(!l.children.length)l.innerHTML='<p class="m">لا يوجد طلبات حالياً</p>'}
 async function act(id,st){const r=db.collection('orders').doc(id);
- await db.runTransaction(async t=>{const o=(await t.get(r)).data();
-  if(st=='accepted'){if(o.status!='new')throw'taken';t.update(r,{status:st,driverId:me.id,driverName:me.name,driverPhone:me.phone})}else t.update(r,{status:st})}).catch(()=>alert('الطلب أُخذ من سائق آخر'))}
-const login_=document.getElementById('login'),app=document.getElementById('app'),hi=document.getElementById('hi'),list=document.getElementById('list'),p=document.getElementById('p'),k=document.getElementById('k');
-if(me)start();
+ try{await db.runTransaction(async t=>{const o=(await t.get(r)).data();
+  if(st=='accepted'){if(o.status!='new')throw'taken';t.update(r,{status:st,driverId:me.id,driverName:me.name,driverPhone:me.phone})}else t.update(r,{status:st})})}
+ catch(e){alert(e=='taken'?'الطلب أُخذ من سائق آخر':e.message)}}
 </script></body></html>

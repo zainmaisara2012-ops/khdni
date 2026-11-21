@@ -13,6 +13,9 @@ const PRICING = { base: 5000, perKm: 2500, currency: "ل.س" };
 const ADMIN_WHATSAPP = "963934845767";
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function mail(p,pre){return (pre||'')+String(p).replace(/\D/g,'').replace(/^(963|0+)/,'')+'@'+(pre?'driver.':'')+'khedni.app'}
 const STATUS = {new:"بانتظار سائق",accepted:"السائق بالطريق إليك",arrived:"السائق وصل",done:"انتهت الرحلة",cancelled:"ملغاة"};
 function km(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
 const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))*1.3}

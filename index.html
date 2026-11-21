@@ -5,21 +5,42 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#ffffff;--card:#ffffff;--g:#ff7a00;--t:#1f1f1f;--m:#7a7a7a}
-*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--t);font-family:Cairo,sans-serif}
-#map{position:fixed;inset:0;}
-.card{position:fixed;left:12px;right:12px;background:var(--card);border-radius:20px;padding:14px;box-shadow:0 4px 24px #0003;z-index:1000}
-#top{top:calc(12px + env(safe-area-inset-top,0px))}#bot{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+:root{--g:#ff7a00;--t:#1f1f1f;--m:#7a7a7a}
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input{-webkit-user-select:text;user-select:text}
+html,body{height:100%;margin:0;background:#fff;color:var(--t);font-family:Cairo,sans-serif}
+#map{position:fixed;inset:0}
+.card{position:fixed;left:12px;right:12px;background:#fff;border-radius:20px;padding:14px;box-shadow:0 4px 24px #0003;z-index:1000}
+#top{top:calc(12px + env(safe-area-inset-top,0px))}#bot{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 .row{display:flex;align-items:center;gap:10px;padding:8px 0}.row+.row{border-top:1px solid #eee}
 .dot{width:12px;height:12px;border-radius:50%;flex:none}.f{background:var(--g)}.t{background:#1f1f1f}
 .row span{flex:1;font-size:15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.m{color:var(--m)}
 #pin{position:fixed;left:50%;top:50%;transform:translate(-50%,-100%);z-index:999;pointer-events:none;text-align:center}
 #pin b{display:block;background:var(--g);color:#fff;border-radius:18px;padding:6px 16px;font-size:14px}
 #pin i{display:block;width:4px;height:22px;background:var(--g);margin:0 auto}
-button,input{font:inherit}button.main{width:100%;background:var(--g);color:#fff;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:17px}
+button,input{font:inherit}
+button.main{width:100%;background:var(--g);color:#fff;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:17px}
 button.sec{background:none;border:0;color:var(--m);padding:8px;width:100%}
 input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;padding:12px;margin:5px 0}
-#info{display:none}.wa{position:fixed;right:12px;top:calc(150px + env(safe-area-inset-top,0px));z-index:1000;background:#fff;color:#1f1f1f;border:0;border-radius:24px;padding:9px 14px;box-shadow:0 2px 12px #0003;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}.wa svg{width:18px;height:18px;fill:#25d366}.big{font-size:20px;font-weight:700;color:var(--g)}
+.big{font-size:22px;font-weight:700;color:var(--g)}.old{text-decoration:line-through;color:var(--m);font-size:14px}
+.chips{display:flex;gap:8px;margin:8px 0}.chip{flex:1;border:2px solid #eee;background:#fff;border-radius:12px;padding:9px;font-weight:700}
+.chip.on{border-color:var(--g);color:var(--g)}.chip:disabled{opacity:.5}
+.cr{display:flex;gap:8px;align-items:center}.cr button{flex:none;background:#1f1f1f;color:#fff;border:0;border-radius:12px;padding:12px 16px}
+.wa{position:fixed;right:12px;top:calc(150px + env(safe-area-inset-top,0px));z-index:1000;background:#fff;color:var(--t);border:0;border-radius:24px;padding:9px 14px;box-shadow:0 2px 12px #0003;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+.wa svg{width:18px;height:18px;fill:#25d366}
+.pane{position:fixed;inset:0 0 calc(64px + env(safe-area-inset-bottom,0px)) 0;background:#f6f6f6;z-index:1500;overflow:auto;display:none;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+.pane h2{margin:4px 0 14px}
+.trip{background:#fff;border-radius:16px;padding:12px;margin:8px 0;box-shadow:0 1px 6px #0002}.trip b{color:var(--g)}.trip .m{float:left}.trip .pr{font-weight:700;margin-top:4px}
+.hd{background:linear-gradient(135deg,#ff7a00,#ffa24d);color:#fff;border-radius:22px;padding:20px}.hd h2{margin:0}.hd div{opacity:.9}
+.w{background:#fff;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 1px 6px #0002}
+.lr{background:#fff;border:0;width:100%;text-align:right;border-radius:14px;padding:14px;margin:6px 0;box-shadow:0 1px 6px #0002;font-weight:700}
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:2000;background:#fff;border-top:1px solid #eee;display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
+#nav button{flex:1;background:none;border:0;padding:8px 0;height:64px;color:var(--m);font-size:12px;font-weight:700}
+#nav svg{display:block;margin:0 auto 2px;width:24px;height:24px;fill:currentColor}#nav .on{color:var(--g)}
+#auth{position:fixed;inset:0;background:#fff;z-index:3000;display:none;align-items:center;justify-content:center;padding:24px}
+#auth>div{width:100%;max-width:380px}.logo{font-size:56px;font-weight:700;color:var(--g);text-align:center;line-height:1.2}.logo small{display:block;font-size:14px;color:var(--t);letter-spacing:8px}
+.tabs{display:flex;margin:18px 0 8px;background:#f2f2f2;border-radius:14px;padding:4px}.tabs button{flex:1;border:0;background:none;padding:10px;border-radius:11px;font-weight:700}.tabs .on{background:#fff;color:var(--g);box-shadow:0 1px 4px #0002}
+#toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;background:#1f1f1f;color:#fff;border-radius:14px;padding:12px;z-index:5000;display:none;text-align:center}
 </style></head><body>
 <div id="map"></div><div id="pin"><b id="pl">من</b><i></i></div>
 <div class="card" id="top">
@@ -27,58 +48,114 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
  <div class="row"><i class="dot t"></i><span id="toT" class="m">حدد الوجهة</span></div>
 </div>
 <div class="card" id="bot">
- <div id="hint" class="m" style="text-align:center;margin-bottom:8px">حرّك الخريطة لتحديد نقطة الانطلاق</div>
- <div id="info"><div class="big" id="pr"></div><div class="m" id="ds" style="margin-bottom:6px"></div>
- <input id="nm" placeholder="اسمك"><input id="ph" type="tel" placeholder="رقم موبايلك"></div>
- <button class="main" id="go">تأكيد نقطة الانطلاق</button>
- <button class="sec" id="back" style="display:none">رجوع</button>
+ <div id="flow">
+  <div id="hint" class="m" style="text-align:center;margin-bottom:8px">حرّك الخريطة لتحديد نقطة الانطلاق</div>
+  <div id="info" style="display:none">
+   <div><span class="big" id="pr"></span> <span class="old" id="old"></span></div><div class="m" id="ds"></div>
+   <div class="cr"><input id="cin" placeholder="كود الحسم (اختياري)"><button id="capply">تطبيق</button></div>
+   <div class="chips"><button class="chip on" id="cc">كاش</button><button class="chip" id="cw">المحفظة</button></div>
+  </div>
+  <button class="main" id="go">تأكيد نقطة الانطلاق</button>
+  <button class="sec" id="back" style="display:none">رجوع</button>
+ </div>
+ <div id="trk" style="display:none"><div class="big" id="st"></div><div class="m" id="dr"></div>
+  <div class="m" id="cnote" style="display:none;margin-top:6px">الطلب مدفوع من المحفظة. للإلغاء تواصل مع الإدارة.</div>
+  <button class="sec" id="cancel" style="color:#e53935">إلغاء الطلب</button></div>
 </div>
-<button class="wa" onclick="wa(window.oid?'رقم الطلب: '+window.oid:'')"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.300 1.200-1.800 1.200-.5.100-1 .2-3.300-.7-2.800-1.100-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.200.1.300 0 .5l-.4.600c-.1.100-.3.300-.1.600.2.300.8 1.300 1.700 2.100 1.100 1 2.100 1.300 2.400 1.400.3.100.4.100.6-.1l.8-1c.2-.3.400-.2.600-.1l1.900.9c.3.100.5.200.5.300.1.200.1.800-.1 1.400z"/></svg>تواصل مع الإدارة</button>
+<button class="wa" onclick="wa(active?'رقم الطلب: '+active.id:'')"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.2.1.3 0 .5l-.4.600c-.1.1-.3.3-.1.600.2.3.8 1.300 1.700 2.100 1.100 1 2.100 1.300 2.400 1.400.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.900.9c.3.1.5.2.5.3.1.2.1.8-.1 1.400z"/></svg>تواصل مع الإدارة</button>
+<div class="pane" id="pTrips"><h2>رحلاتي</h2><div id="tl"></div></div>
+<div class="pane" id="pMe">
+ <div class="hd"><h2 id="mn"></h2><div id="mph"></div></div>
+ <div class="w"><div class="m">رصيد المحفظة</div><div class="big" id="mb">0</div>
+  <button class="main" style="margin-top:10px;font-size:15px;padding:11px" onclick="wa('بدي أشحن رصيدي. رقمي: '+(me.phone||''))">شحن الرصيد عبر واتساب</button></div>
+ <button class="lr" onclick="wa('')">تواصل معنا</button>
+ <button class="lr" style="color:#e53935" onclick="auth.signOut().then(()=>location.reload())">تسجيل الخروج</button>
+</div>
+<nav id="nav">
+ <button data-t="map" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.500A2.500 2.500 0 1 1 12 6.500a2.500 2.500 0 0 1 0 5z"/></svg>اطلب رحلة</button>
+ <button data-t="trips"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 5h-2v6l5 3 1-1.700-4-2.300V7z"/></svg>رحلاتي</button>
+ <button data-t="me"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></svg>حسابي</button>
+</nav>
+<div id="auth"><div>
+ <div class="logo">خدني<small>TAXI</small></div>
+ <div class="tabs"><button id="tIn" class="on">دخول</button><button id="tUp">حساب جديد</button></div>
+ <input id="an" placeholder="الاسم" style="display:none"><input id="aph" type="tel" placeholder="رقم الموبايل (09xxxxxxxx)"><input id="apw" type="password" placeholder="كلمة السر (6 أحرف على الأقل)">
+ <button class="main" id="asub" style="margin-top:8px">دخول</button>
+</div></div>
+<div id="toast"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="config.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-function wa(extra){if(ADMIN_WHATSAPP.includes('000000'))return alert('رقم الواتساب غير مضبوط');
-window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، بدي تواصل مع إدارة خدني'+(extra?'\n'+extra:'')),'_blank')}
-
-// حدود مدينة حلب فقط (جنوب-غرب / شمال-شرق) - عدّلها إذا بدك توسّع أو تضيّق
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
+window.onerror=m=>toast('خطأ: '+m);
+addEventListener('unhandledrejection',e=>toast('خطأ: '+((e.reason&&e.reason.message)||e.reason)));
+document.addEventListener('contextmenu',e=>e.preventDefault());
+function wa(x){if(ADMIN_WHATSAPP.includes('000000'))return toast('رقم الواتساب غير مضبوط');
+window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، بدي تواصل مع إدارة خدني'+(x?'\n'+x:'')),'_blank')}
 const B=L.latLngBounds([36.145,37.075],[36.265,37.225]);
 const map=L.map('map',{zoomControl:false,maxBounds:B,maxBoundsViscosity:1,minZoom:12}).setView([36.2021,37.1343],14);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-let step=0,from=null,to=null,timer;
+let step=0,from=null,to=null,timer,U=null,me={},mode='in',pay='cash',pct=0,code='',base=0,active=null,dist=0;
 navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);
- if(B.contains(ll))map.setView(ll,17);else alert('الخدمة متاحة داخل مدينة حلب فقط')});
+ if(B.contains(ll))map.setView(ll,17);else toast('الخدمة متاحة داخل مدينة حلب فقط')});
 async function addr(c){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&accept-language=ar&lat=${c.lat}&lon=${c.lng}`);
 const j=await r.json();return j.display_name.split('،').slice(0,3).join('، ')}catch(e){return 'موقع على الخريطة'}}
 map.on('moveend',()=>{if(step>1)return;clearTimeout(timer);timer=setTimeout(async()=>{
- const c=map.getCenter(),a=await addr(c);(step?$('toT'):$('fromT')).textContent=a;(step?$('toT'):$('fromT')).classList.remove('m')},500)});
+ const c=map.getCenter(),a=await addr(c),el=step?$('toT'):$('fromT');if(step>1)return;el.textContent=a;el.classList.remove('m')},500)});
 map.fire('moveend');
-$('go').onclick=async()=>{
+const fin=()=>Math.max(0,Math.round(base*(1-pct/100)/500)*500);
+function paint(){const f=fin();$('pr').textContent=f.toLocaleString('ar')+' '+PRICING.currency;$('old').textContent=pct?base.toLocaleString('ar'):'';
+ const w=(me.balance||0)>=f;$('cw').disabled=!w;$('cw').textContent='المحفظة'+(w?'':' (الرصيد لا يكفي)');if(!w&&pay=='wallet')pay='cash';
+ $('cw').classList.toggle('on',pay=='wallet');$('cc').classList.toggle('on',pay=='cash')}
+$('cc').onclick=()=>{pay='cash';paint()};$('cw').onclick=()=>{pay='wallet';paint()};
+$('capply').onclick=async()=>{try{const c=$('cin').value.trim().toUpperCase();if(!c)return;const s=await db.collection('codes').doc(c).get();
+ if(s.exists&&s.data().active){pct=s.data().percent;code=c;toast('تم تطبيق حسم '+pct+'%')}else{pct=0;code='';toast('الكود غير صالح')}paint()}catch(e){toast('تعذر التحقق من الكود')}};
+function reset(){step=0;from=to=null;pct=0;code='';pay='cash';$('cin').value='';$('pl').textContent='من';$('go').textContent='تأكيد نقطة الانطلاق';$('go').disabled=false;
+ $('hint').style.display='block';$('hint').textContent='حرّك الخريطة لتحديد نقطة الانطلاق';$('info').style.display='none';$('back').style.display='none';
+ $('pin').style.display='block';$('toT').textContent='حدد الوجهة';$('toT').className='m';map.fire('moveend')}
+$('back').onclick=reset;
+$('go').onclick=async()=>{try{
  const c=map.getCenter();
- if(!B.contains(c))return alert('الخدمة متاحة داخل مدينة حلب فقط');
+ if(step<2&&!B.contains(c))return toast('الخدمة متاحة داخل مدينة حلب فقط');
  if(step==0){from={lat:c.lat,lng:c.lng,text:$('fromT').textContent};step=1;$('pl').textContent='إلى';
   $('go').textContent='تحديد الوجهة';$('hint').textContent='حرّك الخريطة لتحديد وجهتك';$('back').style.display='block';map.fire('moveend')}
- else if(step==1){to={lat:c.lat,lng:c.lng,text:$('toT').textContent};step=2;
-  const d=km(from,to);$('pr').textContent=price(d).toLocaleString('ar')+' '+PRICING.currency;
-  $('ds').textContent='المسافة التقريبية '+d.toFixed(1)+' كم';$('info').style.display='block';$('hint').style.display='none';
+ else if(step==1){to={lat:c.lat,lng:c.lng,text:$('toT').textContent};step=2;dist=km(from,to);base=price(dist);
+  $('ds').textContent='المسافة التقريبية '+dist.toFixed(1)+' كم';paint();$('info').style.display='block';$('hint').style.display='none';
   $('pin').style.display='none';$('go').textContent='اطلب الآن';
-  map.fitBounds([[from.lat,from.lng],[to.lat,to.lng]],{padding:[120,60]});
-  $('nm').value=localStorage.nm||'';$('ph').value=localStorage.ph||''}
- else if(step==2){
-  if(!$('nm').value||!$('ph').value)return alert('اكتب اسمك ورقمك');
-  localStorage.nm=$('nm').value;localStorage.ph=$('ph').value;$('go').disabled=true;
-  const d=km(from,to);
-  const ref=await db.collection('orders').add({from,to,name:$('nm').value,phone:$('ph').value,price:price(d),km:+d.toFixed(1),
-   status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-  step=3;window.oid=ref.id;$('info').innerHTML='<div class="big" id="st"></div><div class="m" id="dr"></div>';
-  $('go').style.display='none';$('back').textContent='إلغاء الطلب';$('back').style.color='#ff5a5f';$('back').dataset.id=ref.id;
-  ref.onSnapshot(s=>{const o=s.data();$('st').textContent=STATUS[o.status];
-   $('dr').textContent=o.driverName?`السائق: ${o.driverName} — ${o.driverPhone}`:'';})}
-};
-$('back').onclick=()=>{
- if(step==3){db.collection('orders').doc($('back').dataset.id).update({status:'cancelled'});return location.reload()}
- location.reload()};
+  map.fitBounds([[from.lat,from.lng],[to.lat,to.lng]],{padding:[120,60]})}
+ else{$('go').disabled=true;const ref=db.collection('orders').doc(),b=db.batch(),f=fin();
+  b.set(ref,{uid:U.uid,from,to,name:me.name||'',phone:me.phone||'',price:f,km:+dist.toFixed(1),pay,code:code||null,status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  if(pay=='wallet')b.update(db.collection('users').doc(U.uid),{balance:firebase.firestore.FieldValue.increment(-f)});
+  await b.commit()}
+}catch(e){$('go').disabled=false;toast('خطأ: '+e.message)}};
+$('cancel').onclick=()=>active&&db.collection('orders').doc(active.id).update({status:'cancelled'}).catch(e=>toast(e.message));
+function view(){const a=active;$('flow').style.display=a?'none':'block';$('trk').style.display=a?'block':'none';$('top').style.display=a?'none':'block';
+ if(a){$('pin').style.display='none';$('st').textContent=STATUS[a.status];$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
+  $('cancel').style.display=(a.status=='new'&&a.pay!='wallet')?'block':'none';$('cnote').style.display=(a.status=='new'&&a.pay=='wallet')?'block':'none'}}
+function trips(L){$('tl').innerHTML=L.length?'':'<p class="m" style="text-align:center;margin-top:60px">ما عندك رحلات بعد</p>';
+ L.forEach(o=>{const e=document.createElement('div');e.className='trip';const dt=o.createdAt?new Date(o.createdAt.seconds*1000).toLocaleDateString('ar'):'';
+ e.innerHTML=`<b>${STATUS[o.status]}</b><span class="m">${dt}</span><div>${esc(o.from.text)}</div><div class="m">← ${esc(o.to.text)}</div><div class="pr">${o.price.toLocaleString('ar')} ${PRICING.currency}</div>`;$('tl').appendChild(e)})}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x==b));
+ $('pTrips').style.display=b.dataset.t=='trips'?'block':'none';$('pMe').style.display=b.dataset.t=='me'?'block':'none';if(b.dataset.t=='map')map.invalidateSize()});
+function setMode(m){mode=m;$('an').style.display=m=='up'?'block':'none';$('asub').textContent=m=='up'?'إنشاء حساب':'دخول';$('tIn').classList.toggle('on',m=='in');$('tUp').classList.toggle('on',m=='up')}
+$('tIn').onclick=()=>setMode('in');$('tUp').onclick=()=>setMode('up');
+$('asub').onclick=async()=>{const p=$('aph').value,w=$('apw').value,n=$('an').value.trim();
+ if(p.replace(/\D/g,'').length<9||w.length<6)return toast('اكتب رقماً صحيحاً وكلمة سر 6 أحرف على الأقل');
+ try{if(mode=='up'){if(!n)return toast('اكتب اسمك');const c=await auth.createUserWithEmailAndPassword(mail(p),w);
+   await db.collection('users').doc(c.user.uid).set({name:n,phone:p,balance:0})}
+  else await auth.signInWithEmailAndPassword(mail(p),w)}
+ catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':'بيانات الدخول غير صحيحة')}};
+auth.onAuthStateChanged(u=>{if(u&&!/@khedni\.app$/.test(u.email)){auth.signOut();return}
+ U=u;$('auth').style.display=u?'none':'flex';if(!u)return;
+ db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};$('mn').textContent=me.name||'';$('mph').textContent=me.phone||'';
+  $('mb').textContent=(me.balance||0).toLocaleString('ar')+' '+PRICING.currency;if(step==2)paint()});
+ db.collection('orders').where('uid','==',u.uid).onSnapshot(s=>{
+  const Ls=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||9e9)-((a.createdAt&&a.createdAt.seconds)||9e9));
+  const was=active;active=Ls.find(o=>['new','accepted','arrived'].includes(o.status))||null;
+  if(was&&!active)reset();view();trips(Ls)},e=>toast(e.message))});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

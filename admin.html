@@ -1,32 +1,56 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>خدني - الإدارة</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
-<style>body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
+<style>[hidden]{display:none!important}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:12px;margin:8px 0}input,button{font:inherit;border:0;border-radius:10px;padding:10px;margin:3px 0;width:100%}
-input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}.r{background:#ff5a5f;color:#fff}.m{color:#777;font-size:14px}
-.s{display:flex;gap:8px}.s div{flex:1;background:#fff;box-shadow:0 1px 6px #0002;border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:22px;color:#ff7a00}</style></head><body>
+input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}.r{background:#e53935}.m{color:#777;font-size:14px}
+.s{display:flex;gap:8px}.s div{flex:1;background:#fff;box-shadow:0 1px 6px #0002;border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:22px;color:#ff7a00}
+.tb{display:flex;gap:6px;margin:12px 0}.tb button{background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002;padding:9px 4px}.tb .on{background:#ff7a00;color:#fff}.g{display:flex;gap:6px}</style></head><body>
 <div id="lg"><h2>دخول الإدارة</h2><input id="em" type="email" placeholder="الإيميل"><input id="pw" type="password" placeholder="كلمة السر"><button onclick="lg()">دخول</button></div>
-<div id="ad" style="display:none">
+<div id="ad" hidden>
 <div class="s"><div><b id="n1">0</b>طلبات اليوم</div><div><b id="n2">0</b>منتهية</div><div><b id="n3">0</b>الأرباح</div></div>
-<h3>السواقين</h3><div class="c"><input id="dn" placeholder="اسم السائق"><input id="dp" type="tel" placeholder="رقم موبايله"><input id="dk" placeholder="رمز سري له"><button onclick="addD()">إضافة سائق</button></div><div id="ds"></div>
-<h3>الطلبات</h3><div id="os"></div><button class="r" onclick="auth.signOut()">خروج</button></div>
+<div class="tb"><button data-s="o" class="on">الطلبات</button><button data-s="d">السواقين</button><button data-s="u">الزبائن</button><button data-s="c">الحسم</button></div>
+<section id="so"></section>
+<section id="sd" hidden><div class="c"><input id="dn" placeholder="اسم السائق"><input id="dp" type="tel" placeholder="رقم موبايله"><input id="dk" placeholder="كلمة سر له (6 أحرف على الأقل)"><button onclick="addD()">إضافة سائق</button></div><div id="dl"></div></section>
+<section id="su" hidden><input id="uq" placeholder="بحث برقم الزبون" oninput="drawU()"><div id="ul"></div></section>
+<section id="sc" hidden><div class="c"><input id="cn" placeholder="الكود (حروف إنجليزية وأرقام)"><input id="cp" type="number" placeholder="نسبة الحسم %"><button onclick="addC()">إضافة كود</button></div><div id="cl"></div></section>
+<button class="r" onclick="auth.signOut()">خروج</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="config.js"></script>
 <script>
-const $=i=>document.getElementById(i),auth=firebase.auth();
+const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={};
 const lg=()=>auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(()=>alert('بيانات غلط'));
-auth.onAuthStateChanged(u=>{$('lg').style.display=u?'none':'block';$('ad').style.display=u?'block':'none';if(u)go()});
-const addD=async()=>{if(!$('dn').value||!$('dp').value||!$('dk').value)return;await db.collection('drivers').add({name:$('dn').value,phone:$('dp').value,pin:$('dk').value});$('dn').value=$('dp').value=$('dk').value=''};
+auth.onAuthStateChanged(u=>{$('lg').hidden=!!u;$('ad').hidden=!u;if(u&&!started){started=1;go()}});
+document.querySelectorAll('.tb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tb button').forEach(x=>x.classList.toggle('on',x==b));
+ ['o','d','u','c'].forEach(k=>$('s'+k).hidden=k!=b.dataset.s)});
+async function addD(){const n=$('dn').value.trim(),p=$('dp').value,k=$('dk').value;if(!n||!p||k.length<6)return alert('أكمل البيانات (كلمة السر 6 أحرف على الأقل)');
+ try{const sec=firebase.apps.find(a=>a.name=='sec')||firebase.initializeApp(firebaseConfig,'sec');
+  const c=await sec.auth().createUserWithEmailAndPassword(mail(p,'d'),k);await sec.auth().signOut();
+  await db.collection('drivers').doc(c.user.uid).set({name:n,phone:p});$('dn').value=$('dp').value=$('dk').value=''}
+ catch(e){alert(e.code=='auth/email-already-in-use'?'الرقم مضاف مسبقاً':e.message)}}
+async function cancelO(id){const o=OR[id];if(!o||['done','cancelled'].includes(o.status)||!confirm('إلغاء الطلب؟'))return;
+ const b=db.batch();b.update(db.collection('orders').doc(id),{status:'cancelled'});
+ if(o.pay=='wallet'&&o.uid)b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
+function drawU(){const q=$('uq').value.replace(/\D/g,'');$('ul').innerHTML='';
+ US.filter(u=>!q||String(u.phone).replace(/\D/g,'').includes(q)).forEach(u=>{const e=document.createElement('div');e.className='c';
+  e.innerHTML=`<b>${esc(u.name)}</b> ${esc(u.phone)}<div>الرصيد: <b>${(u.balance||0).toLocaleString('ar')}</b> ${PRICING.currency}</div><div class="g"><input id="a${u.id}" type="number" placeholder="المبلغ (سالب للخصم)"><button style="width:90px" onclick="charge('${u.id}')">تنفيذ</button></div>`;$('ul').appendChild(e)})}
+async function charge(id){const v=+$('a'+id).value;if(!v)return;await db.collection('users').doc(id).update({balance:inc(v)});
+ await db.collection('wallet_log').add({uid:id,amount:v,createdAt:firebase.firestore.FieldValue.serverTimestamp()})}
+async function addC(){const c=$('cn').value.trim().toUpperCase(),p=+$('cp').value;if(!/^[A-Z0-9]+$/.test(c)||!(p>0&&p<=100))return alert('كود بحروف إنجليزية/أرقام ونسبة 1-100');
+ await db.collection('codes').doc(c).set({percent:p,active:true});$('cn').value=$('cp').value=''}
+const tg=(id,a)=>db.collection('codes').doc(id).update({active:a}),delC=id=>confirm('حذف؟')&&db.collection('codes').doc(id).delete();
 function go(){
- db.collection('drivers').onSnapshot(s=>{$('ds').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
-  e.innerHTML=`${x.name} — ${x.phone} <span class="m">(رمز ${x.pin})</span>`;const b=document.createElement('button');b.className='r';b.textContent='حذف';
-  b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('ds').appendChild(e)})});
- db.collection('orders').orderBy('createdAt','desc').limit(60).onSnapshot(s=>{$('os').innerHTML='';let t=0,dn=0,sum=0;const today=new Date().toDateString();
-  s.forEach(d=>{const o=d.data();if(o.createdAt&&o.createdAt.toDate().toDateString()==today){t++;if(o.status=='done'){dn++;sum+=o.price}}
+ db.collection('drivers').onSnapshot(s=>{$('dl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
+  e.innerHTML=`${esc(x.name)} — ${esc(x.phone)}`;const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})});
+ db.collection('users').onSnapshot(s=>{US=s.docs.map(d=>({id:d.id,...d.data()}));drawU()});
+ db.collection('codes').onSnapshot(s=>{$('cl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
+  e.innerHTML=`<b>${esc(d.id)}</b> — ${x.percent}% — ${x.active?'فعّال':'موقوف'}<div class="g"><button onclick="tg('${d.id}',${!x.active})">${x.active?'إيقاف':'تفعيل'}</button><button class="r" onclick="delC('${d.id}')">حذف</button></div>`;$('cl').appendChild(e)})});
+ db.collection('orders').orderBy('createdAt','desc').limit(60).onSnapshot(s=>{$('so').innerHTML='';OR={};let t=0,dn=0,sum=0;const today=new Date().toDateString();
+  s.forEach(d=>{const o=d.data();OR[d.id]=o;if(o.createdAt&&o.createdAt.toDate().toDateString()==today){t++;if(o.status=='done'){dn++;sum+=o.price}}
    const e=document.createElement('div');e.className='c';
-   e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency}<div class="m">${o.name} ${o.phone}</div><div class="m">${o.from.text} ← ${o.to.text}</div><div class="m">${o.driverName?'السائق: '+o.driverName:''}</div>`;
-   if(o.status!='done'&&o.status!='cancelled'){const b=document.createElement('button');b.className='r';b.textContent='إلغاء';b.onclick=()=>d.ref.update({status:'cancelled'});e.appendChild(b)}
-   $('os').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar')})}
+   e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency} · ${o.pay=='wallet'?'محفظة':'كاش'}${o.code?' · كود '+esc(o.code):''}<div class="m">${esc(o.name)} ${esc(o.phone)}</div><div class="m">${esc(o.from.text)} ← ${esc(o.to.text)}</div><div class="m">${o.driverName?'السائق: '+esc(o.driverName):''}</div>`;
+   if(o.status!='done'&&o.status!='cancelled')e.insertAdjacentHTML('beforeend',`<button class="r" onclick="cancelO('${d.id}')">إلغاء${o.pay=='wallet'?' (مع إرجاع المبلغ)':''}</button>`);
+   $('so').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar')})}
 </script></body></html>
