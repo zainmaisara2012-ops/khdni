@@ -178,7 +178,7 @@ $('asub').onclick=async()=>{const p=$('aph').value,w=$('apw').value,n=$('an').va
  catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':(e.code&&e.code.startsWith('auth/'))?'بيانات الدخول غير صحيحة':'تعذر حفظ بياناتك: '+(e.code||e.message))}};
 auth.onAuthStateChanged(u=>{if(u&&!/@khedni\.app$/.test(u.email)){auth.signOut();return}
  U=u;$('auth').style.display=u?'none':'flex';if(!u)return;
- db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>toast('تعذر حفظ بياناتك: '+e.code));$('mn').textContent=me.name||'';$('mph').textContent=me.phone||'';
+ db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>toast('تعذر حفظ بياناتك: '+e.code));$('mn').textContent=me.name?'أهلاً، '+me.name:'';if(s.exists&&(!me.name||me.name=='زبون')&&!window.askedName){window.askedName=1;setTimeout(editProf,700)}$('mph').textContent=me.phone||'';
   $('mb').textContent=(me.balance||0).toLocaleString('ar')+' '+PRICING.currency;if(step==2)paint()});
  db.collection('orders').where('uid','==',u.uid).onSnapshot(s=>{
   const Ls=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||9e9)-((a.createdAt&&a.createdAt.seconds)||9e9));
@@ -203,7 +203,7 @@ $('sq').oninput=()=>{clearTimeout(sTimer);const q=$('sq').value.trim();if(q.leng
  }catch(e){toast('تعذر البحث، تأكد من الإنترنت')}},600)};
 function sheet(t,h){$('ot').textContent=t;$('ob').innerHTML=h;$('ov').style.display='block'}
 $('ox').onclick=()=>$('ov').style.display='none';
-function editProf(){sheet('تعديل الملف الشخصي',`<input id="en" value="${esc(me.name||'')}" placeholder="الاسم"><div class="m" style="margin:6px 0 12px">رقم الموبايل: ${esc(me.phone||'')}</div><button class="main" onclick="saveName()">حفظ</button>`)}
+function editProf(){sheet(me.name&&me.name!='زبون'?'تعديل الملف الشخصي':'أهلاً فيك! شو اسمك؟',`<input id="en" value="${esc(me.name=='زبون'?'':(me.name||''))}" placeholder="الاسم"><div class="m" style="margin:6px 0 12px">رقم الموبايل: ${esc(me.phone||'')}</div><button class="main" onclick="saveName()">حفظ</button>`)}
 async function saveName(){const n=$('en').value.trim();if(!n)return toast('اكتب الاسم');try{await db.collection('users').doc(U.uid).update({name:n});$('ov').style.display='none';toast('تم الحفظ')}catch(e){toast('تعذر الحفظ: '+e.message)}}
 function codeSheet(){const c=localStorage.savedCode;sheet('كود الحسم',`<div class="m" style="margin-bottom:8px">${c?'الكود المحفوظ: <b>'+esc(c)+'</b>':'اكتب الكود لحفظه، وبيتطبق تلقائياً على رحلتك'}</div><input id="sc" placeholder="الكود"><button class="main" onclick="saveCode()">حفظ الكود</button>${c?'<button class="sec" onclick="delCode()">حذف الكود المحفوظ</button>':''}`)}
 function delCode(){localStorage.removeItem('savedCode');codeSheet()}
