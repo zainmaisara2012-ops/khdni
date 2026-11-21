@@ -11,9 +11,9 @@ const firebaseConfig = {
 const PRICING = { base: 5000, perKm: 2500, currency: "ل.س" };
 // ===== رقم واتساب الإدارة (بدون +) =====
 const ADMIN_WHATSAPP = "963934845767";
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+const fbApp = window.APP ? firebase.initializeApp(firebaseConfig, window.APP) : firebase.initializeApp(firebaseConfig);
+const db = fbApp.firestore();
+const auth = fbApp.auth();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function mail(p,pre){return (pre||'')+String(p).replace(/\D/g,'').replace(/^(963|0+)/,'')+'@'+(pre?'driver.':'')+'khedni.app'}
 const STATUS = {new:"بانتظار سائق",accepted:"السائق بالطريق إليك",arrived:"السائق وصل",done:"انتهت الرحلة",cancelled:"ملغاة"};
