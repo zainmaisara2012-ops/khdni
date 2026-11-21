@@ -25,16 +25,16 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <script>window.APP="admin"</script>
 <script src="config.js"></script>
 <script>
-const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={};
+const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={},DR=[],SH=[];
 const lg=()=>auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(()=>alert('بيانات غلط'));
 auth.onAuthStateChanged(u=>{$('lg').hidden=!!u;$('ad').hidden=!u;$('who').textContent=u?'مسجّل دخول بالإيميل: '+u.email:'';if(u&&!started){started=1;go()}});
 document.querySelectorAll('.tb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tb button').forEach(x=>x.classList.toggle('on',x==b));
  ['o','d','u','c'].forEach(k=>$('s'+k).hidden=k!=b.dataset.s)});
 async function addD(){const n=$('dn').value.trim(),p=$('dp').value,k=$('dk').value;if(!n||!p||k.length<6)return alert('أكمل البيانات (كلمة السر 6 أحرف على الأقل)');
  try{const sec=firebase.apps.find(a=>a.name=='sec')||firebase.initializeApp(firebaseConfig,'sec');
-  const c=await sec.auth().createUserWithEmailAndPassword(mail(p,'d'),k);await sec.auth().signOut();
-  await db.collection('drivers').doc(c.user.uid).set({name:n,phone:p});$('dn').value=$('dp').value=$('dk').value=''}
- catch(e){alert(e.code=='auth/email-already-in-use'?'الرقم مضاف مسبقاً':e.message)}}
+  let c;try{c=await sec.auth().createUserWithEmailAndPassword(mail(p,'d'),k)}catch(e){if(e.code!='auth/email-already-in-use')throw e;c=await sec.auth().signInWithEmailAndPassword(mail(p,'d'),k)}await sec.auth().signOut();
+  await db.collection('drivers').doc(c.user.uid).set({name:n,phone:p},{merge:true});$('dn').value=$('dp').value=$('dk').value=''}
+ catch(e){alert(['auth/invalid-credential','auth/wrong-password'].includes(e.code)?'الرقم مسجّل سابقاً بكلمة سر مختلفة. اكتب كلمة السر القديمة أو احذف حسابه من Firebase ثم أضفه من جديد':e.message)}}
 async function cancelO(id){const o=OR[id];if(!o||['done','cancelled'].includes(o.status)||!confirm('إلغاء الطلب؟'))return;
  const b=db.batch();b.update(db.collection('orders').doc(id),{status:'cancelled'});
  if(o.pay=='wallet'&&o.uid)b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
@@ -54,9 +54,20 @@ async function addC(){const c=$('cn').value.trim().toUpperCase(),p=+$('cp').valu
  await db.collection('codes').doc(c).set({percent:p,active:true});$('cn').value=$('cp').value=''}
 const fail=n=>e=>{$('err').hidden=false;$('err').textContent='تعذر قراءة '+n+' ('+e.code+')'+(e.code=='permission-denied'?' — الإيميل المكتوب بقواعد Firestore لازم يطابق بالضبط: '+auth.currentUser.email:'')},watch=(q,n,fn)=>q.onSnapshot(fn,fail(n));
 const setT=(id,t)=>db.collection('drivers').doc(id).update({carType:t}),tg=(id,a)=>db.collection('codes').doc(id).update({active:a}),delC=id=>confirm('حذف؟')&&db.collection('codes').doc(id).delete();
+const hrs=ms=>(ms/36e5).toFixed(1);
+function drawD(){$('dl').innerHTML='';const now=Date.now(),today=new Date().toDateString();
+ DR.forEach(d=>{const x=d.data();let tot=0,td=0,on=false;
+  SH.filter(h=>h.did==d.id).forEach(h=>{const st=h.start&&h.start.toMillis();if(!st)return;const en=h.end?h.end.toMillis():(h.last?h.last.toMillis():st);const ms=Math.max(0,en-st);
+   tot+=ms;if(new Date(st).toDateString()==today)td+=ms;if(!h.end&&h.last&&now-h.last.toMillis()<5*60000)on=true});
+  const e=document.createElement('div');e.className='c';
+  e.innerHTML=`<b>${esc(x.name)}</b> — ${esc(x.phone)} <span style="color:${on?'#2e7d32':'#999'};font-weight:700">${on?'● شغّال الآن':'○ متوقف'}</span>
+  <div class="m">${x.carType=='vip'?'سيارة VIP':x.carType?'سيارة عادية':'لم يحدد نوع سيارته بعد'}</div>
+  <div class="m">ساعات اليوم: <b>${hrs(td)}</b> — آخر 30 يوم: <b>${hrs(tot)}</b></div>
+  ${x.carType?`<button onclick="setT('${d.id}','${x.carType=='vip'?'regular':'vip'}')">تغيير إلى ${x.carType=='vip'?'عادية':'VIP'}</button>`:''}`;
+  const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})}
 function go(){
- watch(db.collection('drivers'),'السواقين',s=>{$('dl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
-  e.innerHTML=`${esc(x.name)} — ${esc(x.phone)}<div class="m">${x.carType=='vip'?'سيارة VIP':x.carType?'سيارة عادية':'لم يحدد نوع سيارته بعد'}</div>${x.carType?`<button onclick="setT('${d.id}','${x.carType=='vip'?'regular':'vip'}')">تغيير إلى ${x.carType=='vip'?'عادية':'VIP'}</button>`:''}`;const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})});
+ watch(db.collection('drivers'),'السواقين',s=>{DR=s.docs;drawD()});
+ watch(db.collection('shifts').where('start','>',firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*864e5))),'ساعات العمل',s=>{SH=s.docs.map(d=>d.data());drawD()});setInterval(drawD,60000);
  watch(db.collection('users'),'الزبائن',s=>{US=s.docs.map(d=>({id:d.id,...d.data()}));drawU()});
  watch(db.collection('codes'),'الأكواد',s=>{$('cl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
   e.innerHTML=`<b>${esc(d.id)}</b> — ${x.percent}% — ${x.active?'فعّال':'موقوف'}<div class="g"><button onclick="tg('${d.id}',${!x.active})">${x.active?'إيقاف':'تفعيل'}</button><button class="r" onclick="delC('${d.id}')">حذف</button></div>`;$('cl').appendChild(e)})});

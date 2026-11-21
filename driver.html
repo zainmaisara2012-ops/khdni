@@ -6,7 +6,7 @@
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}a{color:#ff7a00;font-weight:700}.m{color:#777}h3{margin:0 0 6px}</style></head><body>
 <div id="login" style="display:none"><h2>دخول السائق</h2><input id="p" type="tel" placeholder="رقم الموبايل"><input id="k" type="password" placeholder="الرمز السري"><button onclick="doLogin()">دخول</button></div>
 <div id="ct" style="display:none"><h2>نوع سيارتك</h2><p class="m">اختر نوع سيارتك. هاد الاختيار مرة وحدة، وللتغيير لاحقاً تواصل مع الإدارة.</p><button onclick="setCar('regular')">سيارة عادية</button><button onclick="setCar('vip')">سيارة VIP</button></div>
-<div id="app" style="display:none"><h2 id="hi"></h2><div id="list"></div>
+<div id="app" style="display:none"><h2 id="hi"></h2><button id="tgl" onclick="toggle()"></button><div id="sess" class="m" style="text-align:center;margin-bottom:8px"></div><div id="list"></div>
 <button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="wa()">تواصل مع الإدارة عبر واتساب</button>
 <button style="background:#333" onclick="auth.signOut().then(()=>location.reload())">خروج</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <script>window.APP="driver"</script>
 <script src="config.js"></script>
 <script>
-const $=i=>document.getElementById(i);let me=null,N={},M={};
+const $=i=>document.getElementById(i);let me=null,N={},M={},shift=null,hb=null,t0=0,tm=null;const ts=()=>firebase.firestore.FieldValue.serverTimestamp();
 function wa(){window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، أنا السائق: '+me.name+' - '+me.phone),'_blank')}
 function doLogin(){auth.signInWithEmailAndPassword(mail($('p').value,'d'),$('k').value).catch(e=>alert(
  ['auth/invalid-credential','auth/user-not-found','auth/wrong-password'].includes(e.code)?'الرقم أو كلمة السر غلط، أو الإدارة لم تضف حسابك بعد':
@@ -24,24 +24,38 @@ auth.onAuthStateChanged(async u=>{
  if(u&&!/@driver\.khedni\.app$/.test(u.email)){await auth.signOut();return}
  $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';if(!u)return;
  const d=await db.collection('drivers').doc(u.uid).get();
- if(!d.exists){await auth.signOut();alert('حساب السائق غير مفعّل');return}
+ if(!d.exists){await auth.signOut();alert('حسابك مسجّل لكن الإدارة لم تفعّله. اطلب من الإدارة إعادة إضافتك');return}
  me={id:u.uid,...d.data()};
  if(!me.carType){$('app').style.display='none';$('ct').style.display='block';return}
  start()});
 let started=0;
 function start(){if(started)return;started=1;$('hi').textContent='أهلاً '+me.name+' — '+(me.carType=='vip'?'سيارة VIP':'سيارة عادية');
  db.collection('orders').where('status','==','new').where('carType','==',me.carType).onSnapshot(s=>{N={};s.forEach(x=>N[x.id]=x.data());draw()},e=>alert(e.message));
- db.collection('orders').where('driverId','==',me.id).onSnapshot(s=>{M={};s.forEach(x=>{const o=x.data();if(['accepted','arrived'].includes(o.status))M[x.id]=o});draw()},e=>alert(e.message))}
+ db.collection('orders').where('driverId','==',me.id).onSnapshot(s=>{M={};s.forEach(x=>{const o=x.data();if(['accepted','arrived'].includes(o.status))M[x.id]=o});draw()},e=>alert(e.message));resume()}
 async function setCar(t){try{await db.collection('drivers').doc(me.id).update({carType:t});me.carType=t;$('ct').style.display='none';$('app').style.display='block';start()}catch(e){alert('تعذر الحفظ: '+e.message)}}
-function draw(){const all={...N,...M},l=$('list');l.innerHTML='';
+function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
  Object.keys(all).forEach(id=>{const o=all[id],e=document.createElement('div');e.className='c';
   const nav=`https://www.google.com/maps/dir/?api=1&destination=${o.from.lat},${o.from.lng}`;
   e.innerHTML=`<h3>${o.price.toLocaleString('ar')} ${PRICING.currency} · ${o.km} كم${o.carType=='vip'?' · VIP':''} · ${o.pay=='wallet'?'مدفوع (محفظة)':'كاش'}</h3><div>من: ${esc(o.from.text)}</div><div>إلى: ${esc(o.to.text)}</div>`+
   (o.status=='new'?`<button onclick="act('${id}','accepted')">قبول الطلب</button>`:
    `<div class="m">${esc(o.name)} ${esc(o.phone)}</div><a href="${nav}" target="_blank">موقع الزبون بالخريطة</a> <a href="tel:${esc(o.phone)}" style="margin-inline-start:14px">اتصال</a>`+
    (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
-  l.appendChild(e)});if(!l.children.length)l.innerHTML='<p class="m">لا يوجد طلبات حالياً</p>'}
-async function act(id,st){const r=db.collection('orders').doc(id);
+  l.appendChild(e)});if(!l.children.length)l.innerHTML=shift?'<p class="m">لا يوجد طلبات حالياً</p>':'<p class="m">اضغط الزر فوق (تبدأ الشغل) حتى تستلم الطلبات</p>'}
+function setUI(){const b=$('tgl');b.textContent=shift?'شغّال الآن — اضغط للإيقاف':'متوقف — اضغط لتبدأ الشغل';b.style.background=shift?'#ff7a00':'#8a8a8a';b.style.fontSize='19px';b.style.padding='18px';
+ $('sess').textContent=shift?'مدة هالجلسة: '+Math.floor((Date.now()-t0)/60000)+' دقيقة (خلّي التطبيق مفتوح أثناء الشغل)':'';draw()}
+function goOn(id,t){shift=id;t0=t;clearInterval(hb);clearInterval(tm);hb=setInterval(beat,120000);tm=setInterval(setUI,30000);setUI()}
+function goOff(){shift=null;clearInterval(hb);clearInterval(tm);setUI()}
+function beat(){if(shift)db.collection('shifts').doc(shift).update({last:ts()}).catch(()=>{})}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()});
+async function toggle(){const b=$('tgl');b.disabled=true;try{
+ if(!shift){const r=await db.collection('shifts').add({did:me.id,name:me.name,start:ts(),last:ts(),end:null});goOn(r.id,Date.now())}
+ else{await db.collection('shifts').doc(shift).update({end:ts(),last:ts()});goOff()}}
+ catch(e){alert('تعذر التنفيذ: '+(e.code||e.message))}b.disabled=false}
+async function resume(){try{const s=await db.collection('shifts').where('did','==',me.id).where('end','==',null).get();let fresh=null;
+ for(const d of s.docs){const x=d.data(),l=x.last&&x.last.toMillis?x.last.toMillis():0;
+  if(!fresh&&Date.now()-l<180000&&x.start)fresh=d;else await d.ref.update({end:x.last||x.start}).catch(()=>{})}
+ if(fresh)goOn(fresh.id,fresh.data().start.toMillis());else setUI()}catch(e){setUI()}}
+async function act(id,st){if(st=='accepted'&&!shift)return alert('فعّل زر "تبدأ الشغل" أولاً');const r=db.collection('orders').doc(id);
  try{await db.runTransaction(async t=>{const o=(await t.get(r)).data();
   if(st=='accepted'){if(o.status!='new')throw'taken';t.update(r,{status:st,driverId:me.id,driverName:me.name,driverPhone:me.phone})}else t.update(r,{status:st})})}
  catch(e){alert(e=='taken'?'الطلب أُخذ من سائق آخر':e.message)}}
