@@ -51,17 +51,17 @@ async function charge(id){const v=+$('a'+id).value;if(!v)return;await db.collect
  await db.collection('wallet_log').add({uid:id,amount:v,createdAt:firebase.firestore.FieldValue.serverTimestamp()})}
 async function addC(){const c=$('cn').value.trim().toUpperCase(),p=+$('cp').value;if(!/^[A-Z0-9]+$/.test(c)||!(p>0&&p<=100))return alert('كود بحروف إنجليزية/أرقام ونسبة 1-100');
  await db.collection('codes').doc(c).set({percent:p,active:true});$('cn').value=$('cp').value=''}
-const tg=(id,a)=>db.collection('codes').doc(id).update({active:a}),delC=id=>confirm('حذف؟')&&db.collection('codes').doc(id).delete();
+const setT=(id,t)=>db.collection('drivers').doc(id).update({carType:t}),tg=(id,a)=>db.collection('codes').doc(id).update({active:a}),delC=id=>confirm('حذف؟')&&db.collection('codes').doc(id).delete();
 function go(){
  db.collection('drivers').onSnapshot(s=>{$('dl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
-  e.innerHTML=`${esc(x.name)} — ${esc(x.phone)}`;const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})});
+  e.innerHTML=`${esc(x.name)} — ${esc(x.phone)}<div class="m">${x.carType=='vip'?'سيارة VIP':x.carType?'سيارة عادية':'لم يحدد نوع سيارته بعد'}</div>${x.carType?`<button onclick="setT('${d.id}','${x.carType=='vip'?'regular':'vip'}')">تغيير إلى ${x.carType=='vip'?'عادية':'VIP'}</button>`:''}`;const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})});
  db.collection('users').onSnapshot(s=>{US=s.docs.map(d=>({id:d.id,...d.data()}));drawU()});
  db.collection('codes').onSnapshot(s=>{$('cl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
   e.innerHTML=`<b>${esc(d.id)}</b> — ${x.percent}% — ${x.active?'فعّال':'موقوف'}<div class="g"><button onclick="tg('${d.id}',${!x.active})">${x.active?'إيقاف':'تفعيل'}</button><button class="r" onclick="delC('${d.id}')">حذف</button></div>`;$('cl').appendChild(e)})});
  db.collection('orders').orderBy('createdAt','desc').limit(60).onSnapshot(s=>{$('so').innerHTML='';OR={};let t=0,dn=0,sum=0;const today=new Date().toDateString();
   s.forEach(d=>{const o=d.data();OR[d.id]=o;if(o.createdAt&&o.createdAt.toDate().toDateString()==today){t++;if(o.status=='done'){dn++;sum+=o.price}}
    const e=document.createElement('div');e.className='c';
-   e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency} · ${o.pay=='wallet'?'محفظة':'كاش'}${o.code?' · كود '+esc(o.code):''}<div class="m">${esc(o.name)} ${esc(o.phone)}</div><div class="m">${esc(o.from.text)} ← ${esc(o.to.text)}</div><div class="m">${o.driverName?'السائق: '+esc(o.driverName):''}</div>`;
+   e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency}${o.carType=='vip'?' · VIP':''} · ${o.pay=='wallet'?'محفظة':'كاش'}${o.code?' · كود '+esc(o.code):''}<div class="m">${esc(o.name)} ${esc(o.phone)}</div><div class="m">${esc(o.from.text)} ← ${esc(o.to.text)}</div><div class="m">${o.driverName?'السائق: '+esc(o.driverName):''}</div>`;
    if(o.status!='done'&&o.status!='cancelled')e.insertAdjacentHTML('beforeend',`<button class="r" onclick="cancelO('${d.id}')">إلغاء${o.pay=='wallet'?' (مع إرجاع المبلغ)':''}</button>`);
    $('so').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar')})}
 </script></body></html>
