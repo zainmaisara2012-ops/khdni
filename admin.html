@@ -12,7 +12,10 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <div class="tb"><button data-s="o" class="on">الطلبات</button><button data-s="d">السواقين</button><button data-s="u">الزبائن</button><button data-s="c">الحسم</button></div>
 <section id="so"></section>
 <section id="sd" hidden><div class="c"><input id="dn" placeholder="اسم السائق"><input id="dp" type="tel" placeholder="رقم موبايله"><input id="dk" placeholder="كلمة سر له (6 أحرف على الأقل)"><button onclick="addD()">إضافة سائق</button></div><div id="dl"></div></section>
-<section id="su" hidden><input id="uq" placeholder="بحث برقم الزبون" oninput="drawU()"><div id="ul"></div></section>
+<section id="su" hidden>
+<div class="c"><b>شحن رصيد سريع</b><input id="qp" type="tel" placeholder="رقم موبايل الزبون"><input id="qa" type="number" placeholder="المبلغ"><button onclick="quick()">شحن الرصيد</button></div>
+<div class="m" id="ucount" style="margin:10px 0"></div>
+<input id="uq" placeholder="بحث برقم الزبون" oninput="drawU()"><div id="ul"></div></section>
 <section id="sc" hidden><div class="c"><input id="cn" placeholder="الكود (حروف إنجليزية وأرقام)"><input id="cp" type="number" placeholder="نسبة الحسم %"><button onclick="addC()">إضافة كود</button></div><div id="cl"></div></section>
 <button class="r" onclick="auth.signOut()">خروج</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -33,9 +36,16 @@ async function addD(){const n=$('dn').value.trim(),p=$('dp').value,k=$('dk').val
 async function cancelO(id){const o=OR[id];if(!o||['done','cancelled'].includes(o.status)||!confirm('إلغاء الطلب؟'))return;
  const b=db.batch();b.update(db.collection('orders').doc(id),{status:'cancelled'});
  if(o.pay=='wallet'&&o.uid)b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
-function drawU(){const q=$('uq').value.replace(/\D/g,'');$('ul').innerHTML='';
+const nrm=p=>String(p).replace(/\D/g,'').replace(/^(963|0+)/,'');
+async function quick(){const p=nrm($('qp').value),v=+$('qa').value;if(!p||!v)return alert('اكتب الرقم والمبلغ');
+ const u=US.find(x=>nrm(x.phone)==p);if(!u)return alert('هالرقم غير مسجل بالتطبيق');
+ if(!confirm('شحن '+v+' '+PRICING.currency+' للزبون '+u.name+' ؟'))return;
+ await db.collection('users').doc(u.id).update({balance:inc(v)});
+ await db.collection('wallet_log').add({uid:u.id,amount:v,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+ $('qp').value=$('qa').value='';alert('تم. رصيد '+u.name+' الجديد: '+((u.balance||0)+v).toLocaleString('ar'))}
+function drawU(){$('ucount').textContent='عدد الزبائن المسجلين: '+US.length;const q=$('uq').value.replace(/\D/g,'');$('ul').innerHTML='';
  US.filter(u=>!q||String(u.phone).replace(/\D/g,'').includes(q)).forEach(u=>{const e=document.createElement('div');e.className='c';
-  e.innerHTML=`<b>${esc(u.name)}</b> ${esc(u.phone)}<div>الرصيد: <b>${(u.balance||0).toLocaleString('ar')}</b> ${PRICING.currency}</div><div class="g"><input id="a${u.id}" type="number" placeholder="المبلغ (سالب للخصم)"><button style="width:90px" onclick="charge('${u.id}')">تنفيذ</button></div>`;$('ul').appendChild(e)})}
+  e.innerHTML=`<b>${esc(u.name)}</b> ${esc(u.phone)}<div class="m">${u.createdAt?'سجّل بتاريخ '+new Date(u.createdAt.seconds*1000).toLocaleDateString('ar'):''}</div><div>الرصيد: <b>${(u.balance||0).toLocaleString('ar')}</b> ${PRICING.currency}</div><div class="g"><input id="a${u.id}" type="number" placeholder="المبلغ (سالب للخصم)"><button style="width:90px" onclick="charge('${u.id}')">تنفيذ</button></div>`;$('ul').appendChild(e)})}
 async function charge(id){const v=+$('a'+id).value;if(!v)return;await db.collection('users').doc(id).update({balance:inc(v)});
  await db.collection('wallet_log').add({uid:id,amount:v,createdAt:firebase.firestore.FieldValue.serverTimestamp()})}
 async function addC(){const c=$('cn').value.trim().toUpperCase(),p=+$('cp').value;if(!/^[A-Z0-9]+$/.test(c)||!(p>0&&p<=100))return alert('كود بحروف إنجليزية/أرقام ونسبة 1-100');

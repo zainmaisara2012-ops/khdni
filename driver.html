@@ -15,7 +15,9 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <script>
 const $=i=>document.getElementById(i);let me=null,N={},M={};
 function wa(){window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، أنا السائق: '+me.name+' - '+me.phone),'_blank')}
-function doLogin(){auth.signInWithEmailAndPassword(mail($('p').value,'d'),$('k').value).catch(()=>alert('بيانات غلط'))}
+function doLogin(){auth.signInWithEmailAndPassword(mail($('p').value,'d'),$('k').value).catch(e=>alert(
+ ['auth/invalid-credential','auth/user-not-found','auth/wrong-password'].includes(e.code)?'الرقم أو كلمة السر غلط، أو الإدارة لم تضف حسابك بعد':
+ e.code=='auth/network-request-failed'?'تأكد من الإنترنت':'خطأ: '+e.code))}
 auth.onAuthStateChanged(async u=>{
  if(u&&!/@driver\.khedni\.app$/.test(u.email)){await auth.signOut();return}
  $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';if(!u)return;
