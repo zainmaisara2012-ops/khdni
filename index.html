@@ -1,0 +1,84 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>خدني</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ffffff;--card:#ffffff;--g:#ff7a00;--t:#1f1f1f;--m:#7a7a7a}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--t);font-family:Cairo,sans-serif}
+#map{position:fixed;inset:0;}
+.card{position:fixed;left:12px;right:12px;background:var(--card);border-radius:20px;padding:14px;box-shadow:0 4px 24px #0003;z-index:1000}
+#top{top:calc(12px + env(safe-area-inset-top,0px))}#bot{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0}.row+.row{border-top:1px solid #eee}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}.f{background:var(--g)}.t{background:#1f1f1f}
+.row span{flex:1;font-size:15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.m{color:var(--m)}
+#pin{position:fixed;left:50%;top:50%;transform:translate(-50%,-100%);z-index:999;pointer-events:none;text-align:center}
+#pin b{display:block;background:var(--g);color:#fff;border-radius:18px;padding:6px 16px;font-size:14px}
+#pin i{display:block;width:4px;height:22px;background:var(--g);margin:0 auto}
+button,input{font:inherit}button.main{width:100%;background:var(--g);color:#fff;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:17px}
+button.sec{background:none;border:0;color:var(--m);padding:8px;width:100%}
+input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;padding:12px;margin:5px 0}
+#info{display:none}.wa{position:fixed;right:12px;top:calc(150px + env(safe-area-inset-top,0px));z-index:1000;background:#fff;color:#1f1f1f;border:0;border-radius:24px;padding:9px 14px;box-shadow:0 2px 12px #0003;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}.wa svg{width:18px;height:18px;fill:#25d366}.big{font-size:20px;font-weight:700;color:var(--g)}
+</style></head><body>
+<div id="map"></div><div id="pin"><b id="pl">من</b><i></i></div>
+<div class="card" id="top">
+ <div class="row"><i class="dot f"></i><span id="fromT" class="m">جاري تحديد موقعك…</span></div>
+ <div class="row"><i class="dot t"></i><span id="toT" class="m">حدد الوجهة</span></div>
+</div>
+<div class="card" id="bot">
+ <div id="hint" class="m" style="text-align:center;margin-bottom:8px">حرّك الخريطة لتحديد نقطة الانطلاق</div>
+ <div id="info"><div class="big" id="pr"></div><div class="m" id="ds" style="margin-bottom:6px"></div>
+ <input id="nm" placeholder="اسمك"><input id="ph" type="tel" placeholder="رقم موبايلك"></div>
+ <button class="main" id="go">تأكيد نقطة الانطلاق</button>
+ <button class="sec" id="back" style="display:none">رجوع</button>
+</div>
+<button class="wa" onclick="wa(window.oid?'رقم الطلب: '+window.oid:'')"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.300 1.200-1.800 1.200-.5.100-1 .2-3.300-.7-2.800-1.100-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.200.1.300 0 .5l-.4.600c-.1.100-.3.300-.1.600.2.300.8 1.300 1.700 2.100 1.100 1 2.100 1.300 2.400 1.400.3.100.4.100.6-.1l.8-1c.2-.3.400-.2.600-.1l1.900.9c.3.100.5.200.5.300.1.200.1.800-.1 1.400z"/></svg>تواصل مع الإدارة</button>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function wa(extra){if(ADMIN_WHATSAPP.includes('000000'))return alert('رقم الواتساب غير مضبوط');
+window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، بدي تواصل مع إدارة خدني'+(extra?'\n'+extra:'')),'_blank')}
+
+// حدود مدينة حلب فقط (جنوب-غرب / شمال-شرق) - عدّلها إذا بدك توسّع أو تضيّق
+const B=L.latLngBounds([36.145,37.075],[36.265,37.225]);
+const map=L.map('map',{zoomControl:false,maxBounds:B,maxBoundsViscosity:1,minZoom:12}).setView([36.2021,37.1343],14);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+let step=0,from=null,to=null,timer;
+navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);
+ if(B.contains(ll))map.setView(ll,17);else alert('الخدمة متاحة داخل مدينة حلب فقط')});
+async function addr(c){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&accept-language=ar&lat=${c.lat}&lon=${c.lng}`);
+const j=await r.json();return j.display_name.split('،').slice(0,3).join('، ')}catch(e){return 'موقع على الخريطة'}}
+map.on('moveend',()=>{if(step>1)return;clearTimeout(timer);timer=setTimeout(async()=>{
+ const c=map.getCenter(),a=await addr(c);(step?$('toT'):$('fromT')).textContent=a;(step?$('toT'):$('fromT')).classList.remove('m')},500)});
+map.fire('moveend');
+$('go').onclick=async()=>{
+ const c=map.getCenter();
+ if(!B.contains(c))return alert('الخدمة متاحة داخل مدينة حلب فقط');
+ if(step==0){from={lat:c.lat,lng:c.lng,text:$('fromT').textContent};step=1;$('pl').textContent='إلى';
+  $('go').textContent='تحديد الوجهة';$('hint').textContent='حرّك الخريطة لتحديد وجهتك';$('back').style.display='block';map.fire('moveend')}
+ else if(step==1){to={lat:c.lat,lng:c.lng,text:$('toT').textContent};step=2;
+  const d=km(from,to);$('pr').textContent=price(d).toLocaleString('ar')+' '+PRICING.currency;
+  $('ds').textContent='المسافة التقريبية '+d.toFixed(1)+' كم';$('info').style.display='block';$('hint').style.display='none';
+  $('pin').style.display='none';$('go').textContent='اطلب الآن';
+  map.fitBounds([[from.lat,from.lng],[to.lat,to.lng]],{padding:[120,60]});
+  $('nm').value=localStorage.nm||'';$('ph').value=localStorage.ph||''}
+ else if(step==2){
+  if(!$('nm').value||!$('ph').value)return alert('اكتب اسمك ورقمك');
+  localStorage.nm=$('nm').value;localStorage.ph=$('ph').value;$('go').disabled=true;
+  const d=km(from,to);
+  const ref=await db.collection('orders').add({from,to,name:$('nm').value,phone:$('ph').value,price:price(d),km:+d.toFixed(1),
+   status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  step=3;window.oid=ref.id;$('info').innerHTML='<div class="big" id="st"></div><div class="m" id="dr"></div>';
+  $('go').style.display='none';$('back').textContent='إلغاء الطلب';$('back').style.color='#ff5a5f';$('back').dataset.id=ref.id;
+  ref.onSnapshot(s=>{const o=s.data();$('st').textContent=STATUS[o.status];
+   $('dr').textContent=o.driverName?`السائق: ${o.driverName} — ${o.driverPhone}`:'';})}
+};
+$('back').onclick=()=>{
+ if(step==3){db.collection('orders').doc($('back').dataset.id).update({status:'cancelled'});return location.reload()}
+ location.reload()};
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
