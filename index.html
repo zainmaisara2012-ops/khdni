@@ -175,10 +175,10 @@ $('asub').onclick=async()=>{const p=$('aph').value,w=$('apw').value,n=$('an').va
  try{if(mode=='up'){if(!n)return toast('اكتب اسمك');const c=await auth.createUserWithEmailAndPassword(mail(p),w);
    await db.collection('users').doc(c.user.uid).set({name:n,phone:p,balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()})}
   else await auth.signInWithEmailAndPassword(mail(p),w)}
- catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':'بيانات الدخول غير صحيحة')}};
+ catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':(e.code&&e.code.startsWith('auth/'))?'بيانات الدخول غير صحيحة':'تعذر حفظ بياناتك: '+(e.code||e.message))}};
 auth.onAuthStateChanged(u=>{if(u&&!/@khedni\.app$/.test(u.email)){auth.signOut();return}
  U=u;$('auth').style.display=u?'none':'flex';if(!u)return;
- db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});$('mn').textContent=me.name||'';$('mph').textContent=me.phone||'';
+ db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>toast('تعذر حفظ بياناتك: '+e.code));$('mn').textContent=me.name||'';$('mph').textContent=me.phone||'';
   $('mb').textContent=(me.balance||0).toLocaleString('ar')+' '+PRICING.currency;if(step==2)paint()});
  db.collection('orders').where('uid','==',u.uid).onSnapshot(s=>{
   const Ls=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||9e9)-((a.createdAt&&a.createdAt.seconds)||9e9));
