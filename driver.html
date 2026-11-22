@@ -1,11 +1,16 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>خدني - سائق</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
-<style>body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
+<style>.pv{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bottom:6px;display:none}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:14px;margin:10px 0}input,button{font:inherit;width:100%;border:0;border-radius:12px;padding:12px;margin:4px 0}
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}a{color:#ff7a00;font-weight:700}.m{color:#777}h3{margin:0 0 6px}</style></head><body>
 <div id="login" style="display:none"><h2>دخول السائق</h2><input id="p" type="tel" placeholder="رقم الموبايل"><input id="k" type="password" placeholder="الرمز السري"><button onclick="doLogin()">دخول</button></div>
-<div id="ct" style="display:none"><h2>نوع سيارتك</h2><p class="m">اختر نوع سيارتك. هاد الاختيار مرة وحدة، وللتغيير لاحقاً تواصل مع الإدارة.</p><button onclick="setCar('regular')">سيارة عادية</button><button onclick="setCar('vip')">سيارة VIP</button></div>
+<div id="ct" style="display:none"><h2>بيانات السائق والسيارة</h2><p class="m">بتعبّيها مرة وحدة، وبتظهر للزبون لما تقبل طلبه.</p>
+<div id="ctype"><div class="m">نوع السيارة</div><div style="display:flex;gap:8px"><button id="ty-r" style="background:#8a8a8a" onclick="pickT('regular')">سيارة عادية</button><button id="ty-v" style="background:#8a8a8a" onclick="pickT('vip')">سيارة VIP</button></div></div>
+<input id="cn" placeholder="اسم وموديل السيارة (مثلاً: كيا ريو 2015)"><input id="cp" placeholder="رقم لوحة السيارة (النمرة)">
+<div class="m">صورة السيارة</div><input type="file" accept="image/*" onchange="prev(this,'p1',480)"><img id="p1" class="pv">
+<div class="m">صورتك الشخصية</div><input type="file" accept="image/*" onchange="prev(this,'p2',320)"><img id="p2" class="pv">
+<button onclick="saveProf()">حفظ ومتابعة</button></div>
 <div id="app" style="display:none"><h2 id="hi"></h2><button id="tgl" onclick="toggle()"></button><div id="sess" class="m" style="text-align:center;margin-bottom:8px"></div><div id="list"></div>
 <button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="wa()">تواصل مع الإدارة عبر واتساب</button>
 <button style="background:#333" onclick="auth.signOut().then(()=>location.reload())">خروج</button></div>
@@ -26,13 +31,25 @@ auth.onAuthStateChanged(async u=>{
  const d=await db.collection('drivers').doc(u.uid).get();
  if(!d.exists){await auth.signOut();alert('حسابك مسجّل لكن الإدارة لم تفعّله. اطلب من الإدارة إعادة إضافتك');return}
  me={id:u.uid,...d.data()};
- if(!me.carType){$('app').style.display='none';$('ct').style.display='block';return}
+ let pe=false;try{pe=(await db.collection('profiles').doc(u.uid).get()).exists}catch(e){alert('تعذر قراءة بياناتك ('+e.code+'). تأكد من تحديث قواعد Firestore')}
+ me.hasProfile=pe;
+ if(!me.carType||!pe){$('app').style.display='none';$('ct').style.display='block';$('ctype').style.display=me.carType?'none':'block';return}
  start()});
 let started=0;
 function start(){if(started)return;started=1;$('hi').textContent='أهلاً '+me.name+' — '+(me.carType=='vip'?'سيارة VIP':'سيارة عادية');
  db.collection('orders').where('status','==','new').where('carType','==',me.carType).onSnapshot(s=>{N={};s.forEach(x=>N[x.id]=x.data());draw()},e=>alert(e.message));
  db.collection('orders').where('driverId','==',me.id).onSnapshot(s=>{M={};s.forEach(x=>{const o=x.data();if(['accepted','arrived'].includes(o.status))M[x.id]=o});draw()},e=>alert(e.message));resume()}
-async function setCar(t){try{await db.collection('drivers').doc(me.id).update({carType:t});me.carType=t;$('ct').style.display='none';$('app').style.display='block';start()}catch(e){alert('تعذر الحفظ: '+e.message)}}
+let selT=null;const ph={};
+function pickT(t){selT=t;$('ty-r').style.background=t=='regular'?'#ff7a00':'#8a8a8a';$('ty-v').style.background=t=='vip'?'#ff7a00':'#8a8a8a'}
+function img(file,max){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');
+ c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.7))};i.onerror=rej;i.src=fr.result};fr.onerror=rej;fr.readAsDataURL(file)})}
+async function prev(inp,id,max){const f=inp.files[0];if(!f)return;try{ph[id]=await img(f,max);const e=$(id);e.src=ph[id];e.style.display='block'}catch(x){alert('تعذر قراءة الصورة')}}
+async function saveProf(){const t=me.carType||selT,n=$('cn').value.trim(),p=$('cp').value.trim();
+ if(!t||!n||!p||!ph.p1||!ph.p2)return alert('أكمل كل الحقول واختر الصورتين');
+ try{if(!me.carType)await db.collection('drivers').doc(me.id).update({carType:t});
+  await db.collection('profiles').doc(me.id).set({carName:n,plate:p,carPhoto:ph.p1,photo:ph.p2,name:me.name});
+  me.carType=t;me.hasProfile=true;$('ct').style.display='none';$('app').style.display='block';start()}
+ catch(e){alert('تعذر الحفظ: '+(e.code||e.message))}}
 function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
  Object.keys(all).forEach(id=>{const o=all[id],e=document.createElement('div');e.className='c';
   const nav=`https://www.google.com/maps/dir/?api=1&destination=${o.from.lat},${o.from.lng}`;

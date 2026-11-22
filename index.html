@@ -46,6 +46,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
 .grp button{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;border-top:1px solid #eee;padding:15px;font-weight:700;text-align:right;color:var(--t)}
 .grp button:first-child{border-top:0}.grp button:after{content:'‹';color:#bbb;font-size:22px}
 .pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}
+.dc{display:flex;gap:10px;align-items:center;margin:8px 0}.av{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}.cp{width:84px;height:56px;border-radius:12px;object-fit:cover;background:#eee}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;background:#1f1f1f;color:#fff;border-radius:14px;padding:12px;z-index:5000;display:none;text-align:center}
 </style></head><body>
 <div id="map"></div><div id="pin"><b id="pl">من</b><i></i></div>
@@ -67,7 +68,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
   <button class="main" id="go">تأكيد نقطة الانطلاق</button>
   <button class="sec" id="back" style="display:none">رجوع</button>
  </div>
- <div id="trk" style="display:none"><div class="big" id="st"></div><div class="m" id="dr"></div>
+ <div id="trk" style="display:none"><div class="big" id="st"></div><div class="m" id="dr"></div><div id="drc"></div>
   <div class="m" id="cnote" style="display:none;margin-top:6px">الطلب مدفوع من المحفظة. للإلغاء تواصل مع الإدارة.</div>
   <button class="sec" id="cancel" style="color:#e53935">إلغاء الطلب</button></div>
 </div>
@@ -122,7 +123,7 @@ window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرح�
 const B=L.latLngBounds([36.145,37.075],[36.265,37.225]);
 const map=L.map('map',{zoomControl:false,maxBounds:B,maxBoundsViscosity:1,minZoom:12}).setView([36.2021,37.1343],14);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-let step=0,from=null,to=null,timer,U=null,me={},mode='in',pay='cash',car='regular',pct=0,code='',base=0,active=null,dist=0,hold=null,sTimer,sMode='from',routed=null;
+let step=0,from=null,to=null,timer,U=null,me={},mode='in',pay='cash',car='regular',pct=0,code='',base=0,active=null,dist=0,hold=null,sTimer,sMode='from',routed=null,lastDrv=null;const pfCache={};
 navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);
  if(B.contains(ll))map.setView(ll,17);else toast('الخدمة متاحة داخل مدينة حلب فقط')});
 async function addr(c){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&accept-language=ar&lat=${c.lat}&lon=${c.lng}`);
@@ -146,7 +147,7 @@ $('tr').onclick=()=>{car='regular';paint()};$('tv').onclick=()=>{car='vip';paint
 $('cc').onclick=()=>{pay='cash';paint()};$('cw').onclick=()=>{pay='wallet';paint()};
 $('capply').onclick=async()=>{try{const c=$('cin').value.trim().toUpperCase();if(!c)return;const s=await db.collection('codes').doc(c).get();
  if(s.exists&&s.data().active){pct=s.data().percent;code=c;toast('تم تطبيق حسم '+pct+'%')}else{pct=0;code='';toast('الكود غير صالح')}paint()}catch(e){toast('تعذر التحقق من الكود')}};
-function reset(){step=0;hold=null;routed=null;RL.clearLayers();$('myloc').style.display='block';from=to=null;pct=0;code='';pay='cash';car='regular';$('cin').value='';$('pl').textContent='من';$('go').textContent='تأكيد نقطة الانطلاق';$('go').disabled=false;
+function reset(){step=0;hold=null;routed=null;lastDrv=null;$('drc').innerHTML='';$('dr').style.display='block';RL.clearLayers();$('myloc').style.display='block';from=to=null;pct=0;code='';pay='cash';car='regular';$('cin').value='';$('pl').textContent='من';$('go').textContent='تأكيد نقطة الانطلاق';$('go').disabled=false;
  $('hint').style.display='block';$('hint').textContent='حرّك الخريطة لتحديد نقطة الانطلاق';$('info').style.display='none';$('back').style.display='none';
  $('pin').style.display='block';$('toT').textContent='اكتب أو حدد الوجهة';$('toT').className='m';map.fire('moveend')}
 $('back').onclick=reset;
@@ -166,8 +167,15 @@ $('go').onclick=async()=>{try{
   await b.commit()}
 }catch(e){$('go').disabled=false;toast('خطأ: '+e.message)}};
 $('cancel').onclick=()=>active&&db.collection('orders').doc(active.id).update({status:'cancelled'}).catch(e=>toast(e.message));
+async function drvCard(id){if(!id){$('drc').innerHTML='';return}
+ if(!pfCache[id]){try{const s=await db.collection('profiles').doc(id).get();pfCache[id]=s.exists?s.data():{}}catch(e){pfCache[id]={}}}
+ const p=pfCache[id],a=active;if(!a||a.driverId!=id)return;
+ if(!p.carName){$('drc').innerHTML='';$('dr').style.display='block';return}
+ $('dr').style.display='none';
+ $('drc').innerHTML=`<div class="dc"><img class="av"><div><b>${esc(a.driverName)}</b><div class="m">${esc(a.driverPhone)}</div></div></div><div class="dc"><img class="cp"><div><b>${esc(p.carName)}</b><div>النمرة: <b>${esc(p.plate)}</b></div></div></div>`;
+ const im=$('drc').querySelectorAll('img');im[0].src=p.photo||'';im[1].src=p.carPhoto||''}
 function view(){const a=active;$('flow').style.display=a?'none':'block';$('trk').style.display=a?'block':'none';$('top').style.display=a?'none':'block';
- if(a){$('pin').style.display='none';if(routed!=a.id){routed=a.id;showRoute(a.from,a.to)}$('st').textContent=STATUS[a.status];$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
+ if(a){$('pin').style.display='none';if(routed!=a.id){routed=a.id;showRoute(a.from,a.to)}$('st').textContent=STATUS[a.status];if(a.driverId!=lastDrv){lastDrv=a.driverId||null;drvCard(a.driverId)}$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
   $('cancel').style.display=(a.status=='new'&&a.pay!='wallet')?'block':'none';$('cnote').style.display=(a.status=='new'&&a.pay=='wallet')?'block':'none'}}
 function trips(L){$('tl').innerHTML=L.length?'':'<p class="m" style="text-align:center;margin-top:60px">ما عندك رحلات بعد</p>';
  L.forEach(o=>{const e=document.createElement('div');e.className='trip';const dt=o.createdAt?new Date(o.createdAt.seconds*1000).toLocaleDateString('ar'):'';

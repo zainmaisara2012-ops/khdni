@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>خدني - الإدارة</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>.pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}#dv{position:fixed;inset:0;background:#f6f6f6;z-index:100;overflow:auto;padding:14px}[hidden]{display:none!important}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
+<style>.dc{display:flex;gap:10px;align-items:center;margin:8px 0}.av{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}.cp{width:84px;height:56px;border-radius:12px;object-fit:cover;background:#eee}.pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}#dv{position:fixed;inset:0;background:#f6f6f6;z-index:100;overflow:auto;padding:14px}[hidden]{display:none!important}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:12px;margin:8px 0}input,button{font:inherit;border:0;border-radius:10px;padding:10px;margin:3px 0;width:100%}
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}.r{background:#e53935}.m{color:#777;font-size:14px}
 .s{display:flex;gap:8px}.s div{flex:1;background:#fff;box-shadow:0 1px 6px #0002;border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:22px;color:#ff7a00}
@@ -24,11 +24,11 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<div id="dv" hidden><div class="g" style="align-items:center;margin-bottom:8px"><h3 id="dvn" style="flex:1;margin:0"></h3><button style="width:90px" onclick="closeD()">إغلاق</button></div><div id="dvi"></div><div id="dm" style="height:55vh;border-radius:16px;margin-top:8px"></div></div>
+<div id="dv" hidden><div class="g" style="align-items:center;margin-bottom:8px"><h3 id="dvn" style="flex:1;margin:0"></h3><button style="width:90px" onclick="closeD()">إغلاق</button></div><div id="dvi"></div><div id="dm" style="height:55vh;border-radius:16px;margin-top:8px"></div><button class="r" style="margin-top:10px" onclick="resetProf()">حذف بيانات السيارة (ليعيد السائق إدخالها)</button></div>
 <script>window.APP="admin"</script>
 <script src="config.js"></script>
 <script>
-const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={},DR=[],SH=[],DM=null,DL=null,curD=null,curLoc=null,dun=null,fitted=false,rc={k:'',c:null},ptk=0;
+const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={},DR=[],SH=[],DM=null,DL=null,curD=null,curLoc=null,dun=null,fitted=false,rc={k:'',c:null},ptk=0,curProf=null;
 const lg=()=>auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(()=>alert('بيانات غلط'));
 auth.onAuthStateChanged(u=>{$('lg').hidden=!!u;$('ad').hidden=!u;$('who').textContent=u?'مسجّل دخول بالإيميل: '+u.email:'';if(u&&!started){started=1;go()}});
 document.querySelectorAll('.tb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tb button').forEach(x=>x.classList.toggle('on',x==b));
@@ -76,19 +76,22 @@ const ago=ms=>{const m=Math.round((Date.now()-ms)/60000);return m<1?'الآن':'
 function calc(did){let tot=0,td=0,on=false;const now=Date.now(),today=new Date().toDateString();
  SH.filter(h=>h.did==did).forEach(h=>{const st=h.start&&h.start.toMillis();if(!st)return;const en=h.end?h.end.toMillis():(h.last?h.last.toMillis():st);const ms=Math.max(0,en-st);
   tot+=ms;if(new Date(st).toDateString()==today)td+=ms;if(!h.end&&h.last&&now-h.last.toMillis()<5*60000)on=true});return{tot,td,on}}
-function showD(id){curD=id;fitted=false;rc={k:'',c:null};curLoc=null;$('dv').hidden=false;
+function showD(id){curProf=null;db.collection('profiles').doc(id).get().then(s=>{curProf=s.exists?s.data():null;paintD()}).catch(()=>{});curD=id;fitted=false;rc={k:'',c:null};curLoc=null;$('dv').hidden=false;
  if(!DM){DM=L.map('dm').setView([36.2021,37.1343],13);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(DM);DL=L.layerGroup().addTo(DM)}
  setTimeout(()=>{DM.invalidateSize();paintD()},150);
  if(dun)dun();dun=db.collection('locations').doc(id).onSnapshot(s=>{curLoc=s.exists?s.data():null;paintD()},fail('الموقع'))}
+async function resetProf(){if(!curD||!confirm('حذف بيانات سيارة هالسائق؟ رح يُطلب منه إدخالها من جديد.'))return;await db.collection('profiles').doc(curD).delete();curProf=null;paintD()}
 function closeD(){$('dv').hidden=true;if(dun){dun();dun=null}curD=null}
 async function paintD(){if(!curD||!DM)return;const d=DR.find(z=>z.id==curD);if(!d)return;const x=d.data(),st=calc(curD),tk=++ptk;
  const o=Object.keys(OR).map(k=>({id:k,...OR[k]})).find(v=>v.driverId==curD&&['accepted','arrived'].includes(v.status));
  const lt=curLoc&&curLoc.t&&curLoc.t.toMillis?curLoc.t.toMillis():0;
  $('dvn').textContent=x.name;
+ const prof=curProf?`<div class="dc" style="margin-top:8px"><img class="av"><img class="cp"><div><b>${esc(curProf.carName)}</b><div>النمرة: <b>${esc(curProf.plate)}</b></div></div></div>`:'<div class="m">ما أدخل بيانات سيارته بعد</div>';
  $('dvi').innerHTML=`<div class="c">${esc(x.phone)} — ${x.carType=='vip'?'سيارة VIP':'سيارة عادية'}<div>${st.on?'<b style="color:#2e7d32">● شغّال الآن</b>':'○ متوقف'}</div>
  <div class="m">ساعات اليوم: <b>${hrs(st.td)}</b> — آخر 30 يوم: <b>${hrs(st.tot)}</b></div>
- <div class="m">${curLoc?'آخر موقع: '+ago(lt):'ما في موقع (لازم يكون شغّال والتطبيق مفتوح وإذن الموقع مفعّل)'}</div></div>`+
+ <div class="m">${curLoc?'آخر موقع: '+ago(lt):'ما في موقع (لازم يكون شغّال والتطبيق مفتوح وإذن الموقع مفعّل)'}</div>${prof}</div>`+
  (o?`<div class="c"><b>${o.status=='accepted'?'رايح يستلم الزبون':'معه الزبون بالطريق للوجهة'}</b><div>الزبون: ${esc(o.name)} — ${esc(o.phone)}</div><div class="m">من: ${esc(o.from.text)}</div><div class="m">إلى: ${esc(o.to.text)}</div><div class="m">${o.price} ${PRICING.currency} · ${o.pay=='wallet'?'محفظة':'كاش'}</div></div>`:'<div class="c m">ما معه رحلة حالياً</div>');
+ if(curProf){const im=$('dvi').querySelectorAll('img');if(im[0])im[0].src=curProf.photo||'';if(im[1])im[1].src=curProf.carPhoto||''}
  DL.clearLayers();const loc=curLoc?{lat:curLoc.lat,lng:curLoc.lng}:null;let wp=[];
  if(o){if(o.status=='accepted'){wp=loc?[loc,o.from,o.to]:[o.from,o.to];mk(o.from,'من','#ff7a00').addTo(DL)}else wp=loc?[loc,o.to]:[o.from,o.to];mk(o.to,'إلى','#1f1f1f').addTo(DL)}
  if(loc)mk(loc,esc(x.name),'#2e7d32').addTo(DL);
