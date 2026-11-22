@@ -46,10 +46,10 @@ function img(file,max){return new Promise((res,rej)=>{const fr=new FileReader();
 async function prev(inp,id,max){const f=inp.files[0];if(!f)return;try{ph[id]=await img(f,max);const e=$(id);e.src=ph[id];e.style.display='block'}catch(x){alert('تعذر قراءة الصورة')}}
 async function saveProf(){const t=me.carType||selT,n=$('cn').value.trim(),p=$('cp').value.trim();
  if(!t||!n||!p||!ph.p1||!ph.p2)return alert('أكمل كل الحقول واختر الصورتين');
- try{if(!me.carType)await db.collection('drivers').doc(me.id).update({carType:t});
+ try{if(!me.carType){await db.collection('drivers').doc(me.id).update({carType:t});me.carType=t}
   await db.collection('profiles').doc(me.id).set({carName:n,plate:p,carPhoto:ph.p1,photo:ph.p2,name:me.name});
   me.carType=t;me.hasProfile=true;$('ct').style.display='none';$('app').style.display='block';start()}
- catch(e){alert('تعذر الحفظ: '+(e.code||e.message))}}
+ catch(e){alert('تعذر الحفظ: '+(e.code||e.message)+(e.code=='permission-denied'?'\nغالباً قواعد Firestore ما انحدثت (قسم profiles). حدّثها، ثم أعد تحميل الصفحة وجرّب من جديد.':''))}}
 function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
  Object.keys(all).forEach(id=>{const o=all[id],e=document.createElement('div');e.className='c';
   const nav=`https://www.google.com/maps/dir/?api=1&destination=${o.from.lat},${o.from.lng}`;
