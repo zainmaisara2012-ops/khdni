@@ -58,11 +58,12 @@ function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
    `<div class="m">${esc(o.name)} ${esc(o.phone)}</div><a href="${nav}" target="_blank">موقع الزبون بالخريطة</a> <a href="tel:${esc(o.phone)}" style="margin-inline-start:14px">اتصال</a>`+
    (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
   l.appendChild(e)});if(!l.children.length)l.innerHTML=shift?'<p class="m">لا يوجد طلبات حالياً</p>':'<p class="m">اضغط الزر فوق (تبدأ الشغل) حتى تستلم الطلبات</p>'}
-let wid=null,lastP=null,lastT=0,gpsWarn=0;
+let wid=null,lastP=null,lastT=0,gpsWarn=0,lastC=null;
+function pushLoc(id){if(lastC)db.collection('orders').doc(id).update({driverLoc:lastC}).catch(()=>{})}
 function track(){if(!navigator.geolocation||wid!=null)return;
- wid=navigator.geolocation.watchPosition(p=>{const n=Date.now(),c=p.coords,mv=lastP?Math.hypot((c.latitude-lastP.lat)*111000,(c.longitude-lastP.lng)*90000):1e9;
+ wid=navigator.geolocation.watchPosition(p=>{const n=Date.now(),c=p.coords,mv0=(lastC={lat:c.latitude,lng:c.longitude}),mv=lastP?Math.hypot((c.latitude-lastP.lat)*111000,(c.longitude-lastP.lng)*90000):1e9;
   if(n-lastT<20000||(mv<15&&n-lastT<90000))return;lastT=n;lastP={lat:c.latitude,lng:c.longitude};
-  db.collection('locations').doc(me.id).set({lat:c.latitude,lng:c.longitude,t:ts()}).catch(()=>{})},
+  db.collection('locations').doc(me.id).set({lat:c.latitude,lng:c.longitude,t:ts()}).catch(()=>{});Object.keys(M).forEach(id=>pushLoc(id))},
   ()=>{if(!gpsWarn){gpsWarn=1;alert('فعّل الموقع (GPS) وأعطِ المتصفح صلاحية الموقع حتى تظهر للإدارة')}},{enableHighAccuracy:true,maximumAge:10000,timeout:20000})}
 function untrack(){if(wid!=null){navigator.geolocation.clearWatch(wid);wid=null}lastP=null;lastT=0;db.collection('locations').doc(me.id).delete().catch(()=>{})}
 function setUI(){const b=$('tgl');b.textContent=shift?'شغّال الآن — اضغط للإيقاف':'متوقف — اضغط لتبدأ الشغل';b.style.background=shift?'#ff7a00':'#8a8a8a';b.style.fontSize='19px';b.style.padding='18px';
@@ -82,5 +83,5 @@ async function resume(){try{const s=await db.collection('shifts').where('did','=
 async function act(id,st){if(st=='accepted'&&!shift)return alert('فعّل زر "تبدأ الشغل" أولاً');const r=db.collection('orders').doc(id);
  try{await db.runTransaction(async t=>{const o=(await t.get(r)).data();
   if(st=='accepted'){if(o.status!='new')throw'taken';t.update(r,{status:st,driverId:me.id,driverName:me.name,driverPhone:me.phone})}else t.update(r,{status:st})})}
- catch(e){alert(e=='taken'?'الطلب أُخذ من سائق آخر':e.message)}}
+ catch(e){alert(e=='taken'?'الطلب أُخذ من سائق آخر':e.message);return}if(st=='accepted')pushLoc(id)}
 </script></body></html>
