@@ -1,7 +1,8 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>خدني - الإدارة</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&display=swap" rel="stylesheet">
-<style>[hidden]{display:none!important}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>.pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}#dv{position:fixed;inset:0;background:#f6f6f6;z-index:100;overflow:auto;padding:14px}[hidden]{display:none!important}body{margin:0;background:#f6f6f6;color:#1f1f1f;font-family:Cairo,sans-serif;padding:14px}
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:12px;margin:8px 0}input,button{font:inherit;border:0;border-radius:10px;padding:10px;margin:3px 0;width:100%}
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}.r{background:#e53935}.m{color:#777;font-size:14px}
 .s{display:flex;gap:8px}.s div{flex:1;background:#fff;box-shadow:0 1px 6px #0002;border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:22px;color:#ff7a00}
@@ -19,13 +20,15 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <input id="uq" placeholder="بحث باسم الزبون أو رقمه" oninput="drawU()"><div id="ul"></div></section>
 <section id="sc" hidden><div class="c"><input id="cn" placeholder="الكود (حروف إنجليزية وأرقام)"><input id="cp" type="number" placeholder="نسبة الحسم %"><button onclick="addC()">إضافة كود</button></div><div id="cl"></div></section>
 <button class="r" onclick="auth.signOut()">خروج</button></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<div id="dv" hidden><div class="g" style="align-items:center;margin-bottom:8px"><h3 id="dvn" style="flex:1;margin:0"></h3><button style="width:90px" onclick="closeD()">إغلاق</button></div><div id="dvi"></div><div id="dm" style="height:55vh;border-radius:16px;margin-top:8px"></div></div>
 <script>window.APP="admin"</script>
 <script src="config.js"></script>
 <script>
-const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={},DR=[],SH=[];
+const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.increment;let started=0,US=[],OR={},DR=[],SH=[],DM=null,DL=null,curD=null,curLoc=null,dun=null,fitted=false,rc={k:'',c:null},ptk=0;
 const lg=()=>auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(()=>alert('بيانات غلط'));
 auth.onAuthStateChanged(u=>{$('lg').hidden=!!u;$('ad').hidden=!u;$('who').textContent=u?'مسجّل دخول بالإيميل: '+u.email:'';if(u&&!started){started=1;go()}});
 document.querySelectorAll('.tb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tb button').forEach(x=>x.classList.toggle('on',x==b));
@@ -62,12 +65,40 @@ function drawD(){$('dl').innerHTML='';const now=Date.now(),today=new Date().toDa
   const e=document.createElement('div');e.className='c';
   e.innerHTML=`<b>${esc(x.name)}</b> — ${esc(x.phone)} <span style="color:${on?'#2e7d32':'#999'};font-weight:700">${on?'● شغّال الآن':'○ متوقف'}</span>
   <div class="m">${x.carType=='vip'?'سيارة VIP':x.carType?'سيارة عادية':'لم يحدد نوع سيارته بعد'}</div>
-  <div class="m">ساعات اليوم: <b>${hrs(td)}</b> — آخر 30 يوم: <b>${hrs(tot)}</b></div>
+  <div class="m">ساعات اليوم: <b>${hrs(td)}</b> — آخر 30 يوم: <b>${hrs(tot)}</b></div><div style="color:#ff7a00;font-weight:700">اضغط هنا لمتابعة موقعه ورحلته ›</div>
   ${x.carType?`<button onclick="setT('${d.id}','${x.carType=='vip'?'regular':'vip'}')">تغيير إلى ${x.carType=='vip'?'عادية':'VIP'}</button>`:''}`;
-  const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);$('dl').appendChild(e)})}
+  const b=document.createElement('button');b.className='r';b.textContent='حذف';b.onclick=()=>confirm('حذف؟')&&d.ref.delete();e.appendChild(b);e.style.cursor='pointer';e.onclick=ev=>{if(ev.target.tagName!='BUTTON')showD(d.id)};$('dl').appendChild(e)})}
+const mk=(p,t,c)=>L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',iconSize:[0,0],html:`<div class="pinm" style="--c:${c}"><b>${t}</b><i></i></div>`}),interactive:false});
+async function routeOf(pts){try{const ac=new AbortController();setTimeout(()=>ac.abort(),6000);
+ const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${pts.map(p=>p.lng+','+p.lat).join(';')}?overview=full&geometries=geojson`,{signal:ac.signal});
+ const j=await r.json(),x=j.routes&&j.routes[0];return x?{coords:x.geometry.coordinates.map(a=>[a[1],a[0]])}:null}catch(e){return null}}
+const ago=ms=>{const m=Math.round((Date.now()-ms)/60000);return m<1?'الآن':'منذ '+m+' دقيقة'};
+function calc(did){let tot=0,td=0,on=false;const now=Date.now(),today=new Date().toDateString();
+ SH.filter(h=>h.did==did).forEach(h=>{const st=h.start&&h.start.toMillis();if(!st)return;const en=h.end?h.end.toMillis():(h.last?h.last.toMillis():st);const ms=Math.max(0,en-st);
+  tot+=ms;if(new Date(st).toDateString()==today)td+=ms;if(!h.end&&h.last&&now-h.last.toMillis()<5*60000)on=true});return{tot,td,on}}
+function showD(id){curD=id;fitted=false;rc={k:'',c:null};curLoc=null;$('dv').hidden=false;
+ if(!DM){DM=L.map('dm').setView([36.2021,37.1343],13);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(DM);DL=L.layerGroup().addTo(DM)}
+ setTimeout(()=>{DM.invalidateSize();paintD()},150);
+ if(dun)dun();dun=db.collection('locations').doc(id).onSnapshot(s=>{curLoc=s.exists?s.data():null;paintD()},fail('الموقع'))}
+function closeD(){$('dv').hidden=true;if(dun){dun();dun=null}curD=null}
+async function paintD(){if(!curD||!DM)return;const d=DR.find(z=>z.id==curD);if(!d)return;const x=d.data(),st=calc(curD),tk=++ptk;
+ const o=Object.keys(OR).map(k=>({id:k,...OR[k]})).find(v=>v.driverId==curD&&['accepted','arrived'].includes(v.status));
+ const lt=curLoc&&curLoc.t&&curLoc.t.toMillis?curLoc.t.toMillis():0;
+ $('dvn').textContent=x.name;
+ $('dvi').innerHTML=`<div class="c">${esc(x.phone)} — ${x.carType=='vip'?'سيارة VIP':'سيارة عادية'}<div>${st.on?'<b style="color:#2e7d32">● شغّال الآن</b>':'○ متوقف'}</div>
+ <div class="m">ساعات اليوم: <b>${hrs(st.td)}</b> — آخر 30 يوم: <b>${hrs(st.tot)}</b></div>
+ <div class="m">${curLoc?'آخر موقع: '+ago(lt):'ما في موقع (لازم يكون شغّال والتطبيق مفتوح وإذن الموقع مفعّل)'}</div></div>`+
+ (o?`<div class="c"><b>${o.status=='accepted'?'رايح يستلم الزبون':'معه الزبون بالطريق للوجهة'}</b><div>الزبون: ${esc(o.name)} — ${esc(o.phone)}</div><div class="m">من: ${esc(o.from.text)}</div><div class="m">إلى: ${esc(o.to.text)}</div><div class="m">${o.price} ${PRICING.currency} · ${o.pay=='wallet'?'محفظة':'كاش'}</div></div>`:'<div class="c m">ما معه رحلة حالياً</div>');
+ DL.clearLayers();const loc=curLoc?{lat:curLoc.lat,lng:curLoc.lng}:null;let wp=[];
+ if(o){if(o.status=='accepted'){wp=loc?[loc,o.from,o.to]:[o.from,o.to];mk(o.from,'من','#ff7a00').addTo(DL)}else wp=loc?[loc,o.to]:[o.from,o.to];mk(o.to,'إلى','#1f1f1f').addTo(DL)}
+ if(loc)mk(loc,esc(x.name),'#2e7d32').addTo(DL);
+ const key=curD+(o?o.id+o.status:'')+(loc?Math.round(loc.lat*300)+','+Math.round(loc.lng*300):'');
+ if(wp.length>1){if(rc.k!=key){const R=await routeOf(wp);if(tk!=ptk)return;rc={k:key,c:R&&R.coords}}if(rc.c)L.polyline(rc.c,{color:'#ff7a00',weight:5,opacity:.85}).addTo(DL)}
+ const all=[...(loc?[loc]:[]),...(o?[o.from,o.to]:[])].map(p=>[p.lat,p.lng]);
+ if(!fitted&&all.length){DM.fitBounds(all,{padding:[40,40],maxZoom:16});fitted=true}}
 function go(){$('dk').value=localStorage.dpw||'';
- watch(db.collection('drivers'),'السواقين',s=>{DR=s.docs;drawD()});
- watch(db.collection('shifts').where('start','>',firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*864e5))),'ساعات العمل',s=>{SH=s.docs.map(d=>d.data());drawD()});setInterval(drawD,60000);
+ watch(db.collection('drivers'),'السواقين',s=>{DR=s.docs;drawD();paintD()});
+ watch(db.collection('shifts').where('start','>',firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*864e5))),'ساعات العمل',s=>{SH=s.docs.map(d=>d.data());drawD();paintD()});setInterval(drawD,60000);
  watch(db.collection('users'),'الزبائن',s=>{US=s.docs.map(d=>({id:d.id,...d.data()}));drawU()});
  watch(db.collection('codes'),'الأكواد',s=>{$('cl').innerHTML='';s.forEach(d=>{const x=d.data(),e=document.createElement('div');e.className='c';
   e.innerHTML=`<b>${esc(d.id)}</b> — ${x.percent}% — ${x.active?'فعّال':'موقوف'}<div class="g"><button onclick="tg('${d.id}',${!x.active})">${x.active?'إيقاف':'تفعيل'}</button><button class="r" onclick="delC('${d.id}')">حذف</button></div>`;$('cl').appendChild(e)})});
@@ -76,5 +107,5 @@ function go(){$('dk').value=localStorage.dpw||'';
    const e=document.createElement('div');e.className='c';
    e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency}${o.carType=='vip'?' · VIP':''} · ${o.pay=='wallet'?'محفظة':'كاش'}${o.code?' · كود '+esc(o.code):''}<div class="m">${esc(o.name)} ${esc(o.phone)}</div><div class="m">${esc(o.from.text)} ← ${esc(o.to.text)}</div><div class="m">${o.driverName?'السائق: '+esc(o.driverName):''}</div>`;
    if(o.status!='done'&&o.status!='cancelled')e.insertAdjacentHTML('beforeend',`<button class="r" onclick="cancelO('${d.id}')">إلغاء${o.pay=='wallet'?' (مع إرجاع المبلغ)':''}</button>`);
-   $('so').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar')})}
+   $('so').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar');paintD()})}
 </script></body></html>

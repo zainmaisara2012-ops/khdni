@@ -45,6 +45,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
 .grp{background:#fff;border-radius:18px;box-shadow:0 1px 6px #0002;margin:12px 0;overflow:hidden}
 .grp button{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;border-top:1px solid #eee;padding:15px;font-weight:700;text-align:right;color:var(--t)}
 .grp button:first-child{border-top:0}.grp button:after{content:'‹';color:#bbb;font-size:22px}
+.pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;background:#1f1f1f;color:#fff;border-radius:14px;padding:12px;z-index:5000;display:none;text-align:center}
 </style></head><body>
 <div id="map"></div><div id="pin"><b id="pl">من</b><i></i></div>
@@ -121,7 +122,7 @@ window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرح�
 const B=L.latLngBounds([36.145,37.075],[36.265,37.225]);
 const map=L.map('map',{zoomControl:false,maxBounds:B,maxBoundsViscosity:1,minZoom:12}).setView([36.2021,37.1343],14);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-let step=0,from=null,to=null,timer,U=null,me={},mode='in',pay='cash',car='regular',pct=0,code='',base=0,active=null,dist=0,hold=null,sTimer,sMode='from';
+let step=0,from=null,to=null,timer,U=null,me={},mode='in',pay='cash',car='regular',pct=0,code='',base=0,active=null,dist=0,hold=null,sTimer,sMode='from',routed=null;
 navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);
  if(B.contains(ll))map.setView(ll,17);else toast('الخدمة متاحة داخل مدينة حلب فقط')});
 async function addr(c){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&accept-language=ar&lat=${c.lat}&lon=${c.lng}`);
@@ -129,6 +130,14 @@ const j=await r.json();return j.display_name.split('،').slice(0,3).join('، ')}
 map.on('moveend',()=>{if(step>1)return;clearTimeout(timer);timer=setTimeout(async()=>{
  const c=map.getCenter(),el=step?$('toT'):$('fromT'),a=(hold&&c.distanceTo(hold.ll)<40)?hold.name:await addr(c);if(step>1)return;el.textContent=a;el.classList.remove('m')},500)});
 map.fire('moveend');
+const RL=L.layerGroup().addTo(map);
+const mk=(p,t,c)=>L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',iconSize:[0,0],html:`<div class="pinm" style="--c:${c}"><b>${t}</b><i></i></div>`}),interactive:false});
+async function routeOf(pts){try{const ac=new AbortController();setTimeout(()=>ac.abort(),6000);
+ const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${pts.map(p=>p.lng+','+p.lat).join(';')}?overview=full&geometries=geojson`,{signal:ac.signal});
+ const j=await r.json(),x=j.routes&&j.routes[0];return x?{coords:x.geometry.coordinates.map(a=>[a[1],a[0]]),km:x.distance/1000,min:x.duration/60}:null}catch(e){return null}}
+async function showRoute(f,t,R){RL.clearLayers();mk(f,'من','#ff7a00').addTo(RL);mk(t,'إلى','#1f1f1f').addTo(RL);R=R||await routeOf([f,t]);
+ const o={paddingTopLeft:[30,170],paddingBottomRight:[30,340]};
+ if(R){L.polyline(R.coords,{color:'#ff7a00',weight:6,opacity:.85}).addTo(RL);map.fitBounds(L.latLngBounds(R.coords),o)}else map.fitBounds([[f.lat,f.lng],[t.lat,t.lng]],o)}
 const fin=()=>Math.max(0,rnd(base*(car=='vip'?PRICING.vip:1)*(1-pct/100)));
 function paint(){const f=fin();$('ptr').textContent=rnd(base).toLocaleString('ar')+' '+PRICING.currency;$('ptv').textContent=rnd(base*PRICING.vip).toLocaleString('ar')+' '+PRICING.currency;$('tr').classList.toggle('on',car=='regular');$('tv').classList.toggle('on',car=='vip');$('pr').textContent=f.toLocaleString('ar')+' '+PRICING.currency;$('old').textContent=pct?rnd(base*(car=='vip'?PRICING.vip:1)).toLocaleString('ar'):'';
  const w=(me.balance||0)>=f;$('cw').disabled=!w;$('cw').textContent='المحفظة'+(w?'':' (الرصيد لا يكفي)');if(!w&&pay=='wallet')pay='cash';
@@ -137,7 +146,7 @@ $('tr').onclick=()=>{car='regular';paint()};$('tv').onclick=()=>{car='vip';paint
 $('cc').onclick=()=>{pay='cash';paint()};$('cw').onclick=()=>{pay='wallet';paint()};
 $('capply').onclick=async()=>{try{const c=$('cin').value.trim().toUpperCase();if(!c)return;const s=await db.collection('codes').doc(c).get();
  if(s.exists&&s.data().active){pct=s.data().percent;code=c;toast('تم تطبيق حسم '+pct+'%')}else{pct=0;code='';toast('الكود غير صالح')}paint()}catch(e){toast('تعذر التحقق من الكود')}};
-function reset(){step=0;hold=null;$('myloc').style.display='block';from=to=null;pct=0;code='';pay='cash';car='regular';$('cin').value='';$('pl').textContent='من';$('go').textContent='تأكيد نقطة الانطلاق';$('go').disabled=false;
+function reset(){step=0;hold=null;routed=null;RL.clearLayers();$('myloc').style.display='block';from=to=null;pct=0;code='';pay='cash';car='regular';$('cin').value='';$('pl').textContent='من';$('go').textContent='تأكيد نقطة الانطلاق';$('go').disabled=false;
  $('hint').style.display='block';$('hint').textContent='حرّك الخريطة لتحديد نقطة الانطلاق';$('info').style.display='none';$('back').style.display='none';
  $('pin').style.display='block';$('toT').textContent='اكتب أو حدد الوجهة';$('toT').className='m';map.fire('moveend')}
 $('back').onclick=reset;
@@ -145,15 +154,12 @@ $('go').onclick=async()=>{try{
  const c=map.getCenter();
  if(step<2&&!B.contains(c))return toast('الخدمة متاحة داخل مدينة حلب فقط');
  if(step==0){from={lat:c.lat,lng:c.lng,text:$('fromT').textContent};step=1;hold=null;$('myloc').style.display='none';$('pl').textContent='إلى';
-  $('go').textContent='تحديد الوجهة';$('hint').textContent='حرّك الخريطة لتحديد وجهتك';$('back').style.display='block';map.fire('moveend')}
+  $('go').textContent='تحديد الوجهة';$('hint').textContent='حرّك الخريطة لتحديد وجهتك';$('back').style.display='block';RL.clearLayers();mk(from,'من','#ff7a00').addTo(RL);map.fire('moveend')}
  else if(step==1){to={lat:c.lat,lng:c.lng,text:$('toT').textContent};step=2;$('go').disabled=true;dist=km(from,to);
-  try{const ac=new AbortController();setTimeout(()=>ac.abort(),4000);
-   const rr=await fetch(`https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`,{signal:ac.signal});
-   const jj=await rr.json();if(jj.routes&&jj.routes[0])dist=jj.routes[0].distance/1000}catch(e){}
-  $('go').disabled=false;base=price(dist);
-  $('ds').textContent='المسافة التقريبية '+dist.toFixed(1)+' كم';paint();$('info').style.display='block';if(localStorage.savedCode){$('cin').value=localStorage.savedCode;$('capply').click()}$('hint').style.display='none';
+  const R=await routeOf([from,to]);if(R)dist=R.km;$('go').disabled=false;base=price(dist);
+  $('ds').textContent='المسافة '+dist.toFixed(1)+' كم'+(R?' — حوالي '+Math.round(R.min)+' دقيقة':'');paint();$('info').style.display='block';if(localStorage.savedCode){$('cin').value=localStorage.savedCode;$('capply').click()}$('hint').style.display='none';
   $('pin').style.display='none';$('go').textContent='اطلب الآن';
-  map.fitBounds([[from.lat,from.lng],[to.lat,to.lng]],{padding:[120,60]})}
+  showRoute(from,to,R)}
  else{$('go').disabled=true;const ref=db.collection('orders').doc(),b=db.batch(),f=fin();
   b.set(ref,{uid:U.uid,from,to,name:me.name||'',phone:me.phone||'',price:f,km:+dist.toFixed(1),pay,carType:car,code:code||null,status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   if(pay=='wallet')b.update(db.collection('users').doc(U.uid),{balance:firebase.firestore.FieldValue.increment(-f)});
@@ -161,7 +167,7 @@ $('go').onclick=async()=>{try{
 }catch(e){$('go').disabled=false;toast('خطأ: '+e.message)}};
 $('cancel').onclick=()=>active&&db.collection('orders').doc(active.id).update({status:'cancelled'}).catch(e=>toast(e.message));
 function view(){const a=active;$('flow').style.display=a?'none':'block';$('trk').style.display=a?'block':'none';$('top').style.display=a?'none':'block';
- if(a){$('pin').style.display='none';$('st').textContent=STATUS[a.status];$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
+ if(a){$('pin').style.display='none';if(routed!=a.id){routed=a.id;showRoute(a.from,a.to)}$('st').textContent=STATUS[a.status];$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
   $('cancel').style.display=(a.status=='new'&&a.pay!='wallet')?'block':'none';$('cnote').style.display=(a.status=='new'&&a.pay=='wallet')?'block':'none'}}
 function trips(L){$('tl').innerHTML=L.length?'':'<p class="m" style="text-align:center;margin-top:60px">ما عندك رحلات بعد</p>';
  L.forEach(o=>{const e=document.createElement('div');e.className='trip';const dt=o.createdAt?new Date(o.createdAt.seconds*1000).toLocaleDateString('ar'):'';

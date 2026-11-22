@@ -41,10 +41,17 @@ function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
    `<div class="m">${esc(o.name)} ${esc(o.phone)}</div><a href="${nav}" target="_blank">موقع الزبون بالخريطة</a> <a href="tel:${esc(o.phone)}" style="margin-inline-start:14px">اتصال</a>`+
    (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
   l.appendChild(e)});if(!l.children.length)l.innerHTML=shift?'<p class="m">لا يوجد طلبات حالياً</p>':'<p class="m">اضغط الزر فوق (تبدأ الشغل) حتى تستلم الطلبات</p>'}
+let wid=null,lastP=null,lastT=0,gpsWarn=0;
+function track(){if(!navigator.geolocation||wid!=null)return;
+ wid=navigator.geolocation.watchPosition(p=>{const n=Date.now(),c=p.coords,mv=lastP?Math.hypot((c.latitude-lastP.lat)*111000,(c.longitude-lastP.lng)*90000):1e9;
+  if(n-lastT<20000||(mv<15&&n-lastT<90000))return;lastT=n;lastP={lat:c.latitude,lng:c.longitude};
+  db.collection('locations').doc(me.id).set({lat:c.latitude,lng:c.longitude,t:ts()}).catch(()=>{})},
+  ()=>{if(!gpsWarn){gpsWarn=1;alert('فعّل الموقع (GPS) وأعطِ المتصفح صلاحية الموقع حتى تظهر للإدارة')}},{enableHighAccuracy:true,maximumAge:10000,timeout:20000})}
+function untrack(){if(wid!=null){navigator.geolocation.clearWatch(wid);wid=null}lastP=null;lastT=0;db.collection('locations').doc(me.id).delete().catch(()=>{})}
 function setUI(){const b=$('tgl');b.textContent=shift?'شغّال الآن — اضغط للإيقاف':'متوقف — اضغط لتبدأ الشغل';b.style.background=shift?'#ff7a00':'#8a8a8a';b.style.fontSize='19px';b.style.padding='18px';
  $('sess').textContent=shift?'مدة هالجلسة: '+Math.floor((Date.now()-t0)/60000)+' دقيقة (خلّي التطبيق مفتوح أثناء الشغل)':'';draw()}
-function goOn(id,t){shift=id;t0=t;clearInterval(hb);clearInterval(tm);hb=setInterval(beat,120000);tm=setInterval(setUI,30000);setUI()}
-function goOff(){shift=null;clearInterval(hb);clearInterval(tm);setUI()}
+function goOn(id,t){track();shift=id;t0=t;clearInterval(hb);clearInterval(tm);hb=setInterval(beat,120000);tm=setInterval(setUI,30000);setUI()}
+function goOff(){untrack();shift=null;clearInterval(hb);clearInterval(tm);setUI()}
 function beat(){if(shift)db.collection('shifts').doc(shift).update({last:ts()}).catch(()=>{})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()});
 async function toggle(){const b=$('tgl');b.disabled=true;try{
