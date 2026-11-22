@@ -84,6 +84,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
   <button onclick="favSheet()">العناوين المفضلة</button>
  </div>
  <div class="grp">
+  <button onclick="window.askPush&&askPush()">تفعيل الإشعارات</button>
   <button onclick="shareApp()">شارك التطبيق مع أصدقائك</button>
   <button onclick="infoSheet('terms')">الشروط والأحكام</button>
   <button onclick="infoSheet('about')">حولنا</button>
@@ -112,6 +113,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="config.js"></script>
+<script src="push.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
@@ -161,7 +163,7 @@ $('go').onclick=async()=>{try{
   $('ds').textContent='المسافة '+dist.toFixed(1)+' كم'+(R?' — حوالي '+Math.round(R.min)+' دقيقة':'');paint();$('info').style.display='block';if(localStorage.savedCode){$('cin').value=localStorage.savedCode;$('capply').click()}$('hint').style.display='none';
   $('pin').style.display='none';$('go').textContent='اطلب الآن';
   showRoute(from,to,R)}
- else{$('go').disabled=true;const ref=db.collection('orders').doc(),b=db.batch(),f=fin();
+ else{window.askPush&&askPush(true);$('go').disabled=true;const ref=db.collection('orders').doc(),b=db.batch(),f=fin();
   b.set(ref,{uid:U.uid,from,to,name:me.name||'',phone:me.phone||'',price:f,km:+dist.toFixed(1),pay,carType:car,code:code||null,status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   if(pay=='wallet')b.update(db.collection('users').doc(U.uid),{balance:firebase.firestore.FieldValue.increment(-f)});
   await b.commit()}
@@ -204,7 +206,7 @@ $('asub').onclick=async()=>{const p=$('aph').value,w=$('apw').value,n=$('an').va
   else await auth.signInWithEmailAndPassword(mail(p),w)}
  catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':(e.code&&e.code.startsWith('auth/'))?'بيانات الدخول غير صحيحة':'تعذر حفظ بياناتك: '+(e.code||e.message))}};
 auth.onAuthStateChanged(u=>{if(u&&!/@khedni\.app$/.test(u.email)){auth.signOut();return}
- U=u;$('auth').style.display=u?'none':'flex';if(!u)return;
+ U=u;$('auth').style.display=u?'none':'flex';if(!u)return;window.initPush&&initPush('customer',u.uid);
  db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>toast('تعذر حفظ بياناتك: '+e.code));$('mn').textContent=me.name?'أهلاً، '+me.name:'';if(s.exists&&(!me.name||me.name=='زبون')&&!window.askedName){window.askedName=1;setTimeout(editProf,700)}$('mph').textContent=me.phone||'';
   $('mb').textContent=(me.balance||0).toLocaleString('ar')+' '+PRICING.currency;if(step==2)paint()});
  db.collection('orders').where('uid','==',u.uid).onSnapshot(s=>{

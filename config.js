@@ -9,6 +9,8 @@ const firebaseConfig = {
 };
 // ===== التسعيرة =====
 const PRICING = { base: 0, perKm: 200, vip: 1.1, round: 10, currency: "ل.س" };  // الكيلومتر 200، وVIP زيادة 10%
+// ===== OneSignal (الإشعارات): ضع الـ App ID هنا =====
+const ONESIGNAL_APP_ID = "0c34677f-9471-499d-aff7-cf0ea2a59f36";
 // ===== رقم واتساب الإدارة (بدون +) =====
 const ADMIN_WHATSAPP = "963934845767";
 const fbApp = window.APP ? firebase.initializeApp(firebaseConfig, window.APP) : firebase.initializeApp(firebaseConfig);

@@ -12,6 +12,7 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <div class="m">صورتك الشخصية</div><input type="file" accept="image/*" onchange="prev(this,'p2',320)"><img id="p2" class="pv">
 <button onclick="saveProf()">حفظ ومتابعة</button></div>
 <div id="app" style="display:none"><h2 id="hi"></h2><button id="tgl" onclick="toggle()"></button><div id="sess" class="m" style="text-align:center;margin-bottom:8px"></div><div id="list"></div>
+<button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="window.askPush&&askPush()">تفعيل الإشعارات</button>
 <button style="background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002" onclick="wa()">تواصل مع الإدارة عبر واتساب</button>
 <button style="background:#333" onclick="auth.signOut().then(()=>location.reload())">خروج</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -19,6 +20,7 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>window.APP="driver"</script>
 <script src="config.js"></script>
+<script src="push.js"></script>
 <script>
 const $=i=>document.getElementById(i);let me=null,N={},M={},shift=null,hb=null,t0=0,tm=null;const ts=()=>firebase.firestore.FieldValue.serverTimestamp();
 function wa(){window.open('https://wa.me/'+ADMIN_WHATSAPP+'?text='+encodeURIComponent('مرحباً، أنا السائق: '+me.name+' - '+me.phone),'_blank')}
@@ -36,7 +38,7 @@ auth.onAuthStateChanged(async u=>{
  if(!me.carType||!pe){$('app').style.display='none';$('ct').style.display='block';$('ctype').style.display=me.carType?'none':'block';return}
  start()});
 let started=0;
-function start(){if(started)return;started=1;$('hi').textContent='أهلاً '+me.name+' — '+(me.carType=='vip'?'سيارة VIP':'سيارة عادية');
+function start(){if(started)return;started=1;window.initPush&&initPush('driver',me.id);$('hi').textContent='أهلاً '+me.name+' — '+(me.carType=='vip'?'سيارة VIP':'سيارة عادية');
  db.collection('orders').where('status','==','new').where('carType','==',me.carType).onSnapshot(s=>{N={};s.forEach(x=>N[x.id]=x.data());draw()},e=>alert(e.message));
  db.collection('orders').where('driverId','==',me.id).onSnapshot(s=>{M={};s.forEach(x=>{const o=x.data();if(['accepted','arrived'].includes(o.status))M[x.id]=o});draw()},e=>alert(e.message));resume()}
 let selT=null;const ph={};
@@ -73,7 +75,7 @@ function goOff(){untrack();shift=null;clearInterval(hb);clearInterval(tm);setUI(
 function beat(){if(shift)db.collection('shifts').doc(shift).update({last:ts()}).catch(()=>{})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()});
 async function toggle(){const b=$('tgl');b.disabled=true;try{
- if(!shift){const r=await db.collection('shifts').add({did:me.id,name:me.name,start:ts(),last:ts(),end:null});goOn(r.id,Date.now())}
+ if(!shift){window.askPush&&askPush(true);const r=await db.collection('shifts').add({did:me.id,name:me.name,start:ts(),last:ts(),end:null});goOn(r.id,Date.now())}
  else{await db.collection('shifts').doc(shift).update({end:ts(),last:ts()});goOff()}}
  catch(e){alert('تعذر التنفيذ: '+(e.code||e.message))}b.disabled=false}
 async function resume(){try{const s=await db.collection('shifts').where('did','==',me.id).where('end','==',null).get();let fresh=null;
