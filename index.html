@@ -47,6 +47,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
 .grp button:first-child{border-top:0}.grp button:after{content:'‹';color:#bbb;font-size:22px}
 .pinm{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-100%);font-family:Cairo,sans-serif}.pinm b{background:var(--c);color:#fff;border-radius:12px;padding:3px 10px;font-size:12px}.pinm i{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:13px solid var(--c)}
 .dc{display:flex;gap:10px;align-items:center;margin:8px 0}.av{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#eee}.cp{width:84px;height:56px;border-radius:12px;object-fit:cover;background:#eee}
+.locb{position:fixed;left:12px;top:calc(150px + env(safe-area-inset-top,0px));z-index:1000;width:46px;height:46px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 12px #0003;display:flex;align-items:center;justify-content:center}.locb svg{width:26px;height:26px;fill:none;stroke:#ff7a00;stroke-width:2;stroke-linecap:round}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;background:#1f1f1f;color:#fff;border-radius:14px;padding:12px;z-index:5000;display:none;text-align:center}
 </style></head><body>
 <div id="map"></div><div id="pin"><b id="pl">من</b><i></i></div>
@@ -73,6 +74,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
   <button class="sec" id="cancel" style="color:#e53935">إلغاء الطلب</button></div>
 </div>
 <button class="wa" onclick="wa(active?'رقم الطلب: '+active.id:'')"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.2.1.3 0 .5l-.4.600c-.1.1-.3.3-.1.600.2.3.8 1.300 1.700 2.100 1.100 1 2.100 1.300 2.400 1.400.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.900.9c.3.1.5.2.5.3.1.2.1.8-.1 1.400z"/></svg>تواصل مع الإدارة</button>
+<button class="locb" id="locb" aria-label="موقعي"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.500" fill="#ff7a00"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg></button>
 <div class="pane" id="pTrips"><h2>رحلاتي</h2><div id="tl"></div></div>
 <div class="pane" id="pMe">
  <div class="hd"><h2 id="mn"></h2><div id="mph"></div></div>
@@ -207,16 +209,23 @@ $('asub').onclick=async()=>{const p=$('aph').value,w=$('apw').value,n=$('an').va
  catch(e){toast(e.code=='auth/email-already-in-use'?'الرقم مسجل، اختر "دخول"':(e.code&&e.code.startsWith('auth/'))?'بيانات الدخول غير صحيحة':'تعذر حفظ بياناتك: '+(e.code||e.message))}};
 auth.onAuthStateChanged(u=>{if(u&&!/@khedni\.app$/.test(u.email)){auth.signOut();return}
  U=u;$('auth').style.display=u?'none':'flex';if(!u)return;window.initPush&&initPush('customer',u.uid);
+ db.collection('settings').doc('pricing').onSnapshot(s=>{if(s.exists){PT=s.data();if(PT.vip)PRICING.vip=PT.vip;if(step==2){base=price(dist);paint()}}},()=>{});
  db.collection('users').doc(u.uid).onSnapshot(s=>{me=s.data()||{};if(!s.exists)db.collection('users').doc(u.uid).set({name:'زبون',phone:'0'+u.email.split('@')[0],balance:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>toast('تعذر حفظ بياناتك: '+e.code));$('mn').textContent=me.name?'أهلاً، '+me.name:'';if(s.exists&&(!me.name||me.name=='زبون')&&!window.askedName){window.askedName=1;setTimeout(editProf,700)}$('mph').textContent=me.phone||'';
   $('mb').textContent=(me.balance||0).toLocaleString('ar')+' '+PRICING.currency;if(step==2)paint()});
  db.collection('orders').where('uid','==',u.uid).onSnapshot(s=>{
   const Ls=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||9e9)-((a.createdAt&&a.createdAt.seconds)||9e9));
   const was=active;active=Ls.find(o=>['new','accepted','arrived'].includes(o.status))||null;
   if(was&&!active)reset();view();trips(Ls)},e=>toast(e.message))});
-function useLoc(){if(!navigator.geolocation)return toast('الجهاز لا يدعم تحديد الموقع');
- navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);
-  if(!B.contains(ll))return toast('موقعك خارج مدينة حلب');$('sr').style.display='none';hold=null;map.setView(ll,17);map.fire('moveend')},
-  ()=>toast('فعّل الموقع (GPS) وأعطِ المتصفح صلاحية الموقع'),{enableHighAccuracy:true,timeout:10000})}
+const ME=L.layerGroup().addTo(map);
+function useLoc(){if(!navigator.geolocation)return toast('الجهاز لا يدعم تحديد الموقع');toast('جاري تحديد موقعك بدقة…');
+ navigator.geolocation.getCurrentPosition(p=>{const c=p.coords,ll=L.latLng(c.latitude,c.longitude);
+  if(!B.contains(ll))return toast('موقعك خارج مدينة حلب');
+  $('sr').style.display='none';hold=null;ME.clearLayers();
+  L.circle(ll,{radius:c.accuracy,color:'#2979ff',weight:1,fillOpacity:.12}).addTo(ME);
+  L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#2979ff',fillOpacity:1}).addTo(ME);
+  map.setView(ll,18);if(step<2)map.fire('moveend');toast('دقة الموقع: ±'+Math.round(c.accuracy)+' متر')},
+  e=>toast(e.code==1?'أعطِ المتصفح صلاحية الموقع من إعدادات الموقع':'فعّل خدمة الموقع (GPS) بالجوال'),{enableHighAccuracy:true,timeout:20000,maximumAge:0})}
+$('locb').onclick=useLoc;
 $('myloc').onclick=useLoc;$('sloc').onclick=useLoc;
 function showFavs(){$('rs').innerHTML='';favs().forEach(x=>{const b=document.createElement('button');b.className='lr';b.textContent='★ '+x.name+' — '+x.text;b.onclick=()=>pick(x.lat,x.lng,x.text);$('rs').appendChild(b)})}
 function openS(m){sMode=m;$('sr').style.display='block';$('sq').value='';showFavs();$('sloc').style.display=m=='from'?'block':'none';setTimeout(()=>$('sq').focus(),150)}
@@ -232,8 +241,8 @@ $('sq').oninput=()=>{clearTimeout(sTimer);const q=$('sq').value.trim();if(q.leng
  }catch(e){toast('تعذر البحث، تأكد من الإنترنت')}},600)};
 function sheet(t,h){$('ot').textContent=t;$('ob').innerHTML=h;$('ov').style.display='block'}
 $('ox').onclick=()=>$('ov').style.display='none';
-function editProf(){sheet(me.name&&me.name!='زبون'?'تعديل الملف الشخصي':'أهلاً فيك! شو اسمك؟',`<input id="en" value="${esc(me.name=='زبون'?'':(me.name||''))}" placeholder="الاسم"><div class="m" style="margin:6px 0 12px">رقم الموبايل: ${esc(me.phone||'')}</div><button class="main" onclick="saveName()">حفظ</button>`)}
-async function saveName(){const n=$('en').value.trim();if(!n)return toast('اكتب الاسم');try{await db.collection('users').doc(U.uid).update({name:n});$('ov').style.display='none';toast('تم الحفظ')}catch(e){toast('تعذر الحفظ: '+e.message)}}
+function editProf(){sheet(me.name&&me.name!='زبون'?'تعديل الملف الشخصي':'أهلاً فيك! شو اسمك؟',`<input id="en" value="${esc(me.name=='زبون'?'':(me.name||''))}" placeholder="الاسم"><input id="eph" type="tel" value="${esc(me.phone||'')}" placeholder="رقم الموبايل"><div class="m" style="margin:2px 0 12px;font-size:13px">رقم التواصل اللي بيشوفه السائق. رقم تسجيل الدخول بيضل الرقم اللي سجّلت فيه.</div><button class="main" onclick="saveName()">حفظ</button>`)}
+async function saveName(){const n=$('en').value.trim(),ph=$('eph').value.trim();if(!n)return toast('اكتب الاسم');if(ph.replace(/\D/g,'').length<9)return toast('اكتب رقماً صحيحاً');try{await db.collection('users').doc(U.uid).update({name:n,phone:ph});$('ov').style.display='none';toast('تم الحفظ')}catch(e){toast('تعذر الحفظ: '+e.message)}}
 function codeSheet(){const c=localStorage.savedCode;sheet('كود الحسم',`<div class="m" style="margin-bottom:8px">${c?'الكود المحفوظ: <b>'+esc(c)+'</b>':'اكتب الكود لحفظه، وبيتطبق تلقائياً على رحلتك'}</div><input id="sc" placeholder="الكود"><button class="main" onclick="saveCode()">حفظ الكود</button>${c?'<button class="sec" onclick="delCode()">حذف الكود المحفوظ</button>':''}`)}
 function delCode(){localStorage.removeItem('savedCode');codeSheet()}
 async function saveCode(){const c=$('sc').value.trim().toUpperCase();if(!c)return;try{const s=await db.collection('codes').doc(c).get();

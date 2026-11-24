@@ -6,12 +6,12 @@
 .c{background:#fff;box-shadow:0 1px 6px #0002;border-radius:16px;padding:12px;margin:8px 0}input,button{font:inherit;border:0;border-radius:10px;padding:10px;margin:3px 0;width:100%}
 input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font-weight:700}.r{background:#e53935}.m{color:#777;font-size:14px}
 .s{display:flex;gap:8px}.s div{flex:1;background:#fff;box-shadow:0 1px 6px #0002;border-radius:14px;padding:10px;text-align:center}.s b{display:block;font-size:22px;color:#ff7a00}
-.tb{display:flex;gap:6px;margin:12px 0}.tb button{background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002;padding:9px 4px}.tb .on{background:#ff7a00;color:#fff}.g{display:flex;gap:6px}</style></head><body>
+.tb{display:flex;gap:6px;margin:12px 0}.tb button{background:#fff;color:#1f1f1f;box-shadow:0 1px 6px #0002;padding:9px 2px;font-size:13px}.tb .on{background:#ff7a00;color:#fff}.g{display:flex;gap:6px}</style></head><body>
 <div id="lg"><h2>دخول الإدارة</h2><input id="em" type="email" placeholder="الإيميل"><input id="pw" type="password" placeholder="كلمة السر"><button onclick="lg()">دخول</button></div>
 <div id="ad" hidden>
 <div class="m" id="who" style="margin-bottom:6px"></div><div class="c" id="err" hidden style="background:#ffebee;color:#c62828"></div>
 <div class="s"><div><b id="n1">0</b>طلبات اليوم</div><div><b id="n2">0</b>منتهية</div><div><b id="n3">0</b>الأرباح</div></div>
-<div class="tb"><button data-s="o" class="on">الطلبات</button><button data-s="d">السواقين</button><button data-s="u">الزبائن</button><button data-s="c">الحسم</button></div>
+<div class="tb"><button data-s="o" class="on">الطلبات</button><button data-s="d">السواقين</button><button data-s="u">الزبائن</button><button data-s="c">الحسم</button><button data-s="p">التسعيرة</button></div>
 <section id="so"></section>
 <section id="sd" hidden><div class="c"><input id="dn" placeholder="اسم السائق"><input id="dp" type="tel" placeholder="رقم موبايله"><input id="dk" placeholder="كلمة السر (بتنحفظ بهالجهاز بعد أول مرة)"><button onclick="addD()">إضافة سائق</button></div><div id="dl"></div></section>
 <section id="su" hidden>
@@ -20,6 +20,10 @@ input{background:#ececec;color:#1f1f1f}button{background:#ff7a00;color:#fff;font
 <div class="m" id="ucount" style="margin:10px 0"></div>
 <input id="uq" placeholder="بحث باسم الزبون أو رقمه" oninput="drawU()"><div id="ul"></div></section>
 <section id="sc" hidden><div class="c"><input id="cn" placeholder="الكود (حروف إنجليزية وأرقام)"><input id="cp" type="number" placeholder="نسبة الحسم %"><button onclick="addC()">إضافة كود</button></div><div id="cl"></div></section>
+<section id="sp" hidden>
+<div class="c"><b>تعبئة تلقائية للجدول</b><input id="pk" type="number" placeholder="سعر الكيلومتر الواحد (مثلاً 200)"><input id="pv" type="number" placeholder="زيادة سيارة VIP % (مثلاً 10)"><button onclick="fillP()">تعبئة الجدول تلقائياً</button></div>
+<div class="m" style="margin:8px 0">كل خانة هي سعر الرحلة لحد هالمسافة. عدّل أي سعر يدوياً ثم اضغط حفظ.</div>
+<button onclick="saveP()">حفظ التسعيرة</button><div id="pl" style="margin-top:8px"></div></section>
 <button class="r" onclick="auth.signOut()">خروج</button></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -33,7 +37,7 @@ const $=i=>document.getElementById(i),inc=firebase.firestore.FieldValue.incremen
 const lg=()=>auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(()=>alert('بيانات غلط'));
 auth.onAuthStateChanged(u=>{$('lg').hidden=!!u;$('ad').hidden=!u;$('who').textContent=u?'مسجّل دخول بالإيميل: '+u.email:'';if(u&&!started){started=1;go()}});
 document.querySelectorAll('.tb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tb button').forEach(x=>x.classList.toggle('on',x==b));
- ['o','d','u','c'].forEach(k=>$('s'+k).hidden=k!=b.dataset.s)});
+ ['o','d','u','c','p'].forEach(k=>$('s'+k).hidden=k!=b.dataset.s)});
 async function addD(){const n=$('dn').value.trim(),p=$('dp').value,k=$('dk').value;if(!n||!p||k.length<6)return alert('أكمل البيانات (كلمة السر 6 أحرف على الأقل)');
  try{const sec=firebase.apps.find(a=>a.name=='sec')||firebase.initializeApp(firebaseConfig,'sec');
   let c;try{c=await sec.auth().createUserWithEmailAndPassword(mail(p,'d'),k)}catch(e){if(e.code!='auth/email-already-in-use')throw e;c=await sec.auth().signInWithEmailAndPassword(mail(p,'d'),k)}await sec.auth().signOut();
@@ -44,7 +48,7 @@ async function cancelO(id){const o=OR[id];if(!o||['done','cancelled'].includes(o
  if(o.pay=='wallet'&&o.uid)b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
 const nrm=p=>String(p).replace(/\D/g,'').replace(/^(963|0+)/,'');
 async function quick(){const p=nrm($('qp').value),v=+$('qa').value;if(!p||!v)return alert('اكتب الرقم والمبلغ');
- const u=US.find(x=>nrm(x.phone)==p);if(!u)return alert('هالرقم غير مسجل بالتطبيق');
+ const m=US.filter(x=>nrm(x.phone)==p);if(!m.length)return alert('هالرقم غير مسجل بالتطبيق');if(m.length>1)return alert('في أكثر من زبون بنفس الرقم: '+m.map(x=>x.name).join('، ')+'. اشحن من قائمة الزبائن مباشرة.');const u=m[0];
  if(!confirm('شحن '+v+' '+PRICING.currency+' للزبون '+u.name+' ؟'))return;
  await db.collection('users').doc(u.id).update({balance:inc(v)});
  await db.collection('wallet_log').add({uid:u.id,amount:v,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -100,7 +104,13 @@ async function paintD(){if(!curD||!DM)return;const d=DR.find(z=>z.id==curD);if(!
  if(wp.length>1){if(rc.k!=key){const R=await routeOf(wp);if(tk!=ptk)return;rc={k:key,c:R&&R.coords}}if(rc.c)L.polyline(rc.c,{color:'#ff7a00',weight:5,opacity:.85}).addTo(DL)}
  const all=[...(loc?[loc]:[]),...(o?[o.from,o.to]:[])].map(p=>[p.lat,p.lng]);
  if(!fitted&&all.length){DM.fitBounds(all,{padding:[40,40],maxZoom:16});fitted=true}}
+function drawP(t){$('pl').innerHTML=BOUNDS.map((b,i)=>`<div class="g" style="align-items:center"><span style="width:95px;flex:none">حتى ${b} كم</span><input id="p${i}" type="number" value="${t?t[i]:''}"></div>`).join('')}
+function fillP(){const k=+$('pk').value;if(!k)return alert('اكتب سعر الكيلومتر');BOUNDS.forEach((b,i)=>$('p'+i).value=rnd(k*b))}
+async function saveP(){const t=BOUNDS.map((b,i)=>+$('p'+i).value);if(t.some(x=>!(x>0)))return alert('كل الخانات لازم تكون أرقام أكبر من صفر');
+ await db.collection('settings').doc('pricing').set({table:t,vip:1+(+$('pv').value||0)/100,updated:firebase.firestore.FieldValue.serverTimestamp()});alert('تم حفظ التسعيرة')}
 function go(){$('dk').value=localStorage.dpw||'';
+ drawP(BOUNDS.map(b=>rnd(PRICING.perKm*b)));$('pk').value=PRICING.perKm;$('pv').value=Math.round((PRICING.vip-1)*100);
+ watch(db.collection('settings').doc('pricing'),'التسعيرة',s=>{if(s.exists){const d=s.data();drawP(d.table);$('pv').value=Math.round((d.vip-1)*100)}});
  watch(db.collection('drivers'),'السواقين',s=>{DR=s.docs;drawD();paintD()});
  watch(db.collection('shifts').where('start','>',firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*864e5))),'ساعات العمل',s=>{SH=s.docs.map(d=>d.data());drawD();paintD()});setInterval(drawD,60000);
  watch(db.collection('users'),'الزبائن',s=>{US=s.docs.map(d=>({id:d.id,...d.data()}));drawU()});
