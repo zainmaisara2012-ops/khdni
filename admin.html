@@ -43,8 +43,10 @@ async function addD(){const n=$('dn').value.trim(),p=$('dp').value,k=$('dk').val
   let c;try{c=await sec.auth().createUserWithEmailAndPassword(mail(p,'d'),k)}catch(e){if(e.code!='auth/email-already-in-use')throw e;c=await sec.auth().signInWithEmailAndPassword(mail(p,'d'),k)}await sec.auth().signOut();
   await db.collection('drivers').doc(c.user.uid).set({name:n,phone:p},{merge:true});localStorage.dpw=k;$('dn').value=$('dp').value='';alert('تمت إضافة السائق: '+n)}
  catch(e){alert(['auth/invalid-credential','auth/wrong-password'].includes(e.code)?'الرقم مسجّل سابقاً بكلمة سر مختلفة. اكتب كلمة السر القديمة أو احذف حسابه من Firebase ثم أضفه من جديد':e.message)}}
+async function refundO(id){const o=OR[id];if(!o||o.refunded||!confirm('إرجاع '+o.price+' '+PRICING.currency+' لمحفظة الزبون '+o.name+'؟'))return;
+ const b=db.batch();b.update(db.collection('orders').doc(id),{refunded:true});b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
 async function cancelO(id){const o=OR[id];if(!o||['done','cancelled'].includes(o.status)||!confirm('إلغاء الطلب؟'))return;
- const b=db.batch();b.update(db.collection('orders').doc(id),{status:'cancelled'});
+ const b=db.batch();b.update(db.collection('orders').doc(id),o.pay=='wallet'?{status:'cancelled',refunded:true}:{status:'cancelled'});
  if(o.pay=='wallet'&&o.uid)b.update(db.collection('users').doc(o.uid),{balance:inc(o.price)});await b.commit()}
 const nrm=p=>String(p).replace(/\D/g,'').replace(/^(963|0+)/,'');
 async function quick(){const p=nrm($('qp').value),v=+$('qa').value;if(!p||!v)return alert('اكتب الرقم والمبلغ');
@@ -120,6 +122,7 @@ function go(){$('dk').value=localStorage.dpw||'';
   s.forEach(d=>{const o=d.data();OR[d.id]=o;if(o.createdAt&&o.createdAt.toDate().toDateString()==today){t++;if(o.status=='done'){dn++;sum+=o.price}}
    const e=document.createElement('div');e.className='c';
    e.innerHTML=`<b>${STATUS[o.status]}</b> · ${o.price} ${PRICING.currency}${o.carType=='vip'?' · VIP':''} · ${o.pay=='wallet'?'محفظة':'كاش'}${o.code?' · كود '+esc(o.code):''}<div class="m">${esc(o.name)} ${esc(o.phone)}</div><div class="m">${esc(o.from.text)} ← ${esc(o.to.text)}</div><div class="m">${o.driverName?'السائق: '+esc(o.driverName):''}</div>`;
+   if(o.status=='cancelled'&&o.pay=='wallet'&&!o.refunded)e.insertAdjacentHTML('beforeend',`<button onclick="refundO('${d.id}')">ألغاه الزبون — إرجاع المبلغ للمحفظة (${o.price})</button>`);
    if(o.status!='done'&&o.status!='cancelled')e.insertAdjacentHTML('beforeend',`<button class="r" onclick="cancelO('${d.id}')">إلغاء${o.pay=='wallet'?' (مع إرجاع المبلغ)':''}</button>`);
    $('so').appendChild(e)});$('n1').textContent=t;$('n2').textContent=dn;$('n3').textContent=sum.toLocaleString('ar');paintD()})}
 </script></body></html>

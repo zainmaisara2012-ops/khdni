@@ -70,7 +70,7 @@ input{width:100%;background:#f2f2f2;border:0;color:var(--t);border-radius:12px;p
   <button class="sec" id="back" style="display:none">رجوع</button>
  </div>
  <div id="trk" style="display:none"><div class="big" id="st"></div><div class="m" id="dr"></div><div id="drc"></div><div class="big" id="eta" style="font-size:15px"></div>
-  <div class="m" id="cnote" style="display:none;margin-top:6px">الطلب مدفوع من المحفظة. للإلغاء تواصل مع الإدارة.</div>
+  <div class="m" id="cnote" style="display:none;margin-top:6px">الطلب مدفوع من المحفظة. إذا ألغيته بترجّع لك الإدارة المبلغ لمحفظتك.</div>
   <button class="sec" id="cancel" style="color:#e53935">إلغاء الطلب</button></div>
 </div>
 <button class="wa" onclick="wa(active?'رقم الطلب: '+active.id:'')"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.2.1.3 0 .5l-.4.600c-.1.1-.3.3-.1.600.2.3.8 1.300 1.700 2.100 1.100 1 2.100 1.300 2.400 1.400.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.900.9c.3.1.5.2.5.3.1.2.1.8-.1 1.400z"/></svg>تواصل مع الإدارة</button>
@@ -170,7 +170,7 @@ $('go').onclick=async()=>{try{
   if(pay=='wallet')b.update(db.collection('users').doc(U.uid),{balance:firebase.firestore.FieldValue.increment(-f)});
   await b.commit()}
 }catch(e){$('go').disabled=false;toast('خطأ: '+e.message)}};
-$('cancel').onclick=()=>active&&db.collection('orders').doc(active.id).update({status:'cancelled'}).catch(e=>toast(e.message));
+$('cancel').onclick=()=>{if(!active||!confirm('تأكيد إلغاء الرحلة؟'))return;db.collection('orders').doc(active.id).update({status:'cancelled'}).then(()=>toast('تم إلغاء الرحلة')).catch(e=>toast('تعذر الإلغاء: '+e.message))};
 let AC=null;
 function unlock(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state=='suspended')AC.resume()}catch(e){}}
 ['touchstart','click'].forEach(ev=>document.addEventListener(ev,unlock,{passive:true}));
@@ -192,8 +192,8 @@ function view(){const a=active;$('flow').style.display=a?'none':'block';$('trk')
  if(a){$('pin').style.display='none';if(routed!=a.id){routed=a.id;showRoute(a.from,a.to)}$('st').textContent=STATUS[a.status];if(a.driverId!=lastDrv){lastDrv=a.driverId||null;drvCard(a.driverId)}
   const pv=stSeen[a.id];stSeen[a.id]=a.status;if(pv&&pv!='arrived'&&a.status=='arrived'){beep2();toast('وصل السائق! تفضل')}
   if(a.driverLoc){const k=a.id+a.status+a.driverLoc.lat+a.driverLoc.lng;if(k!=dk){dk=k;
-   if(dfit!=a.id){dfit=a.id;map.fitBounds([[a.driverLoc.lat,a.driverLoc.lng],[a.from.lat,a.from.lng],[a.to.lat,a.to.lng]],{paddingTopLeft:[30,100],paddingBottomRight:[30,330]})}drawDrv(a)}}else{DL2.clearLayers()}$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
-  $('cancel').style.display=(a.status=='new'&&a.pay!='wallet')?'block':'none';$('cnote').style.display=(a.status=='new'&&a.pay=='wallet')?'block':'none'}}
+   if(dfit!=a.id){dfit=a.id;map.fitBounds([[a.driverLoc.lat,a.driverLoc.lng],[a.from.lat,a.from.lng],[a.to.lat,a.to.lng]],{paddingTopLeft:[30,100],paddingBottomRight:[30,330]})}drawDrv(a)}}else{DL2.clearLayers();$('eta').textContent=''}$('dr').textContent=a.driverName?`السائق: ${a.driverName} — ${a.driverPhone}`:'';
+  const cn=a.status=='new'||a.status=='accepted';$('cancel').style.display=cn?'block':'none';$('cancel').textContent='إلغاء الرحلة';$('cnote').style.display=(cn&&a.pay=='wallet')?'block':'none'}}
 function trips(L){$('tl').innerHTML=L.length?'':'<p class="m" style="text-align:center;margin-top:60px">ما عندك رحلات بعد</p>';
  L.forEach(o=>{const e=document.createElement('div');e.className='trip';const dt=o.createdAt?new Date(o.createdAt.seconds*1000).toLocaleDateString('ar'):'';
  e.innerHTML=`<b>${STATUS[o.status]}</b><span class="m">${dt}</span><div>${esc(o.from.text)}</div><div class="m">← ${esc(o.to.text)}</div><div class="pr">${o.price.toLocaleString('ar')} ${PRICING.currency}</div>`;$('tl').appendChild(e)})}

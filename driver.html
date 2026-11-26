@@ -58,7 +58,7 @@ function draw(){const all={...(shift?N:{}),...M},l=$('list');l.innerHTML='';
   e.innerHTML=`<h3>${o.price.toLocaleString('ar')} ${PRICING.currency} · ${o.km} كم${o.carType=='vip'?' · VIP':''} · ${o.pay=='wallet'?'مدفوع (محفظة)':'كاش'}</h3><div>من: ${esc(o.from.text)}</div><div>إلى: ${esc(o.to.text)}</div>`+
   (o.status=='new'?`<button onclick="act('${id}','accepted')">قبول الطلب</button>`:
    `<div class="m">${esc(o.name)} ${esc(o.phone)}</div><a href="${nav}" target="_blank">موقع الزبون بالخريطة</a> <a href="tel:${esc(o.phone)}" style="margin-inline-start:14px">اتصال</a>`+
-   (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
+   (o.status=='accepted'?`<button onclick="act('${id}','arrived')">وصلت للزبون</button><button style="background:#e53935" onclick="rel('${id}')">إلغاء الرحلة</button>`:`<button onclick="act('${id}','done')">إنهاء الرحلة</button>`));
   l.appendChild(e)});if(!l.children.length)l.innerHTML=shift?'<p class="m">لا يوجد طلبات حالياً</p>':'<p class="m">اضغط الزر فوق (تبدأ الشغل) حتى تستلم الطلبات</p>'}
 let wid=null,lastP=null,lastT=0,gpsWarn=0,lastC=null;
 function pushLoc(id){if(lastC)db.collection('orders').doc(id).update({driverLoc:lastC}).catch(()=>{})}
@@ -82,6 +82,8 @@ async function resume(){try{const s=await db.collection('shifts').where('did','=
  for(const d of s.docs){const x=d.data(),l=x.last&&x.last.toMillis?x.last.toMillis():0;
   if(!fresh&&Date.now()-l<180000&&x.start)fresh=d;else await d.ref.update({end:x.last||x.start}).catch(()=>{})}
  if(fresh)goOn(fresh.id,fresh.data().start.toMillis());else setUI()}catch(e){setUI()}}
+async function rel(id){if(!confirm('إلغاء الرحلة وإرجاع الطلب لباقي السواقين؟'))return;const D=firebase.firestore.FieldValue.delete();
+ try{await db.collection('orders').doc(id).update({status:'new',driverId:D,driverName:D,driverPhone:D,driverLoc:D})}catch(e){alert('تعذر الإلغاء: '+(e.code||e.message))}}
 async function act(id,st){if(st=='accepted'&&!shift)return alert('فعّل زر "تبدأ الشغل" أولاً');const r=db.collection('orders').doc(id);
  try{await db.runTransaction(async t=>{const o=(await t.get(r)).data();
   if(st=='accepted'){if(o.status!='new')throw'taken';t.update(r,{status:st,driverId:me.id,driverName:me.name,driverPhone:me.phone})}else t.update(r,{status:st})})}
